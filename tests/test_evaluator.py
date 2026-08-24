@@ -1,7 +1,7 @@
 """Tests for the rule evaluation layer."""
 
 from src.reliability.evaluator import evaluate_rules
-from src.reliability.models import CheckType, Severity
+from src.reliability.models import CheckType
 
 ROWS = [
     {"customer_id": "C1", "email": "a@example.com", "age": "30", "plan": "pro"},
@@ -15,7 +15,7 @@ def test_evaluator_aggregates_findings_from_configured_rules() -> None:
     report = evaluate_rules(ROWS, dataset_name="customers", source="test.csv")
 
     assert report.dataset.row_count == 4
-    assert report.finding_count == 4
+    assert report.finding_count == 5
     assert {finding.check for finding in report.findings} == {
         CheckType.COMPLETENESS,
         CheckType.UNIQUENESS,

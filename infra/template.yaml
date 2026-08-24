@@ -14,6 +14,11 @@ Parameters:
   BedrockModelId:
     Type: String
     Description: Bedrock model ID enabled in the deployment region.
+  LogRetentionDays:
+    Type: Number
+    Default: 14
+    MinValue: 1
+    MaxValue: 3653
 Resources:
   ReliabilityBucket:
     Type: AWS::S3::Bucket
@@ -45,8 +50,34 @@ Resources:
                 Rules:
                   - Name: prefix
                     Value: input/
+      Logging:
+        LogFormat: JSON
+        ApplicationLogLevel: INFO
+        SystemLogLevel: WARN
+      Tags:
+        Project: agentic-data-reliability
+        Component: reliability-runtime
+  ReliabilityLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${ReliabilityFunction}
+      RetentionInDays: !Ref LogRetentionDays
+  Dashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub ${AWS::StackName}-reliability
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {"type":"metric","x":0,"y":0,"width":12,"height":6,"properties":{"title":"Lambda Invocations","view":"timeSeries","region":"${AWS::Region}","metrics":[["AWS/Lambda","Invocations","FunctionName","${ReliabilityFunction}"]]}},
+            {"type":"metric","x":12,"y":0,"width":12,"height":6,"properties":{"title":"Lambda Errors","view":"timeSeries","region":"${AWS::Region}","metrics":[["AWS/Lambda","Errors","FunctionName","${ReliabilityFunction}"]]}},
+            {"type":"metric","x":0,"y":6,"width":12,"height":6,"properties":{"title":"Lambda Duration","view":"timeSeries","region":"${AWS::Region}","metrics":[["AWS/Lambda","Duration","FunctionName","${ReliabilityFunction}"]]}}
+          ]
+        }
 Outputs:
-  ReliabilityBucketName:
-    Value: !Ref ReliabilityBucket
-  ReliabilityFunctionName:
-    Value: !Ref ReliabilityFunction
+  ReliabilityBucketName: {Value: !Ref ReliabilityBucket}
+  ReliabilityFunctionName: {Value: !Ref ReliabilityFunction}
+  ReliabilityLogGroupName: {Value: !Ref ReliabilityLogGroup}
+  DashboardName: {Value: !Ref Dashboard}

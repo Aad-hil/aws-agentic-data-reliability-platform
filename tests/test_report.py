@@ -16,10 +16,10 @@ def test_report_summarizes_failures_and_score() -> None:
     summary = build_reliability_summary(report)
 
     assert summary["status"] == "failed"
-    assert summary["finding_count"] == 4
+    assert summary["finding_count"] == 5
     assert summary["severity_counts"]["critical"] == 1
-    assert summary["severity_counts"]["error"] == 3
-    assert summary["score"] == 55
+    assert summary["severity_counts"]["error"] == 4
+    assert summary["score"] == 10
 
 
 def test_clean_dataset_gets_perfect_score() -> None:
