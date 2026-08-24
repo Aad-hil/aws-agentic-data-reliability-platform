@@ -19,6 +19,9 @@ s3 = boto3.client("s3")
 REPORT_PREFIX = os.getenv("REPORT_PREFIX", "reports/")
 BEDROCK_MODEL_ID = os.getenv("BEDROCK_MODEL_ID", "")
 
+def _log(event: str, **fields: Any) -> None:
+    logger.info(json.dumps({"event": event, "timestamp": datetime.now(timezone.utc).isoformat(), **fields}, default=str))
+
 def build_orchestrator() -> ReliabilityOrchestrator:
     if not BEDROCK_MODEL_ID:
         raise RuntimeError("BEDROCK_MODEL_ID must be configured")
@@ -27,16 +30,19 @@ def build_orchestrator() -> ReliabilityOrchestrator:
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     request_id = getattr(context, "aws_request_id", str(uuid.uuid4()))
-    logger.info("Lambda invocation started", extra={"request_id": request_id, "record_count": len(event.get("Records", []))})
+    records = event.get("Records", [])
+    _log("invocation_started", request_id=request_id, record_count=len(records))
     processed: list[dict[str, Any]] = []
     failures: list[dict[str, str]] = []
     orchestrator = build_orchestrator()
 
-    for record in event.get("Records", []):
+    for record in records:
         bucket = record["s3"]["bucket"]["name"]
         key = urllib.parse.unquote_plus(record["s3"]["object"]["key"])
         if not key.startswith("input/") or not key.lower().endswith(".csv"):
+            _log("record_skipped", request_id=request_id, bucket=bucket, key=key)
             continue
+        started = datetime.now(timezone.utc)
         try:
             response = s3.get_object(Bucket=bucket, Key=key)
             rows = list(csv.DictReader(io.StringIO(response["Body"].read().decode("utf-8"))))
@@ -55,11 +61,15 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             s3.put_object(Bucket=bucket, Key=report_key,
                           Body=json.dumps(result, indent=2, default=str).encode("utf-8"),
                           ContentType="application/json")
+            elapsed_ms = int((datetime.now(timezone.utc) - started).total_seconds() * 1000)
             processed.append({"input_key": key, "report_key": report_key, "status": summary["status"]})
-            logger.info("Dataset processed", extra={"request_id": request_id, "bucket": bucket, "key": key})
+            _log("dataset_processed", request_id=request_id, bucket=bucket, key=key,
+                 dataset=dataset_name, status=summary["status"], duration_ms=elapsed_ms)
         except Exception as exc:
-            logger.exception("Dataset processing failed", extra={"request_id": request_id, "bucket": bucket, "key": key})
+            _log("dataset_failed", request_id=request_id, bucket=bucket, key=key,
+                 error_type=exc.__class__.__name__)
+            logger.exception("Dataset processing failed")
             failures.append({"input_key": key, "error": exc.__class__.__name__})
 
-    logger.info("Lambda invocation completed", extra={"request_id": request_id, "processed": len(processed), "failures": len(failures)})
+    _log("invocation_completed", request_id=request_id, processed=len(processed), failures=len(failures))
     return {"processed": processed, "failures": failures}
