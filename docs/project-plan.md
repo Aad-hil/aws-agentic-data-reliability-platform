@@ -1,56 +1,42 @@
 # Project Plan
 
-## Phase 0 — Repository Foundation
+## Completed
 
-- [x] Create GitHub repository
-- [x] Add README, license, ignore rules, and environment template
-- [x] Add architecture and project plan
-- [x] Add minimal Python dependencies
+### Phase 0 — Foundation
+- [x] GitHub repository, README, license, ignore rules, environment template
+- [x] Architecture and project plan
 
-## Phase 1 — Reliability Core
+### Phase 1 — Data foundation
+- [x] Realistic sample dataset
+- [x] Initial data model and reliability scenarios
 
-- [ ] Define a small sample data source
-- [ ] Define reliability checks
-- [ ] Create a normalized reliability finding model
-- [ ] Add unit tests
-- [ ] Keep the first implementation runnable locally
+### Phase 2 — Reliability engine
+- [x] Profiling
+- [x] Deterministic checks and findings
+- [x] Evaluation and report generation
+- [x] Unit tests
 
-## Phase 2 — AWS Foundation
+### Phase 3 — Agentic reasoning
+- [x] Typed contracts
+- [x] Bedrock adapter
+- [x] Detection, RCA, and Recommendation agents
+- [x] Sequential orchestrator
+- [x] Local end-to-end workflow
 
-- [ ] Select the minimum AWS services required for the first end-to-end flow
-- [ ] Define IAM boundaries
-- [ ] Add AWS configuration and clients
-- [ ] Document the deployment path
+### Phase 4 — AWS runtime
+- [x] 4.1 S3 + Lambda execution boundary
+- [ ] 4.2 Lambda + Bedrock agent workflow
+- [ ] 4.3 Error handling, retry boundaries, and structured logging
+- [ ] 4.4 CloudWatch observability and operational metrics
+- [ ] 4.5 Deployment validation and runbook
 
-## Phase 3 — First Agent
+### Phase 5 — Evaluation and portfolio hardening
+- [ ] Representative reliability cases
+- [ ] Agent output regression/evaluation suite
+- [ ] Cost and latency measurements
+- [ ] Architecture and execution evidence
+- [ ] Deployment/troubleshooting guide
 
-- [ ] Implement the reliability detection agent
-- [ ] Introduce managed model inference where useful
-- [ ] Add structured agent input/output
-- [ ] Test failure and fallback behavior
+## Scope guardrails
 
-## Phase 4 — Multi-Agent Investigation
-
-- [ ] Add root-cause analysis agent
-- [ ] Add recommendation/explanation agent
-- [ ] Define orchestration and handoff contracts
-- [ ] Preserve evidence across agent steps
-
-## Phase 5 — Observability & Reliability
-
-- [ ] Add structured logging
-- [ ] Track agent execution and outcomes
-- [ ] Add error handling and retries where appropriate
-- [ ] Add evaluation cases for representative data failures
-
-## Phase 6 — Portfolio Polish
-
-- [ ] Add architecture diagram
-- [ ] Add example end-to-end run
-- [ ] Add deployment instructions
-- [ ] Add screenshots or execution evidence
-- [ ] Document trade-offs and lessons learned
-
-## Scope Guardrails
-
-This project should remain compact enough to explain in an interview. New AWS services or agents should be added only when they demonstrate a meaningful architectural capability.
+Use deterministic logic for facts, model inference for interpretation, and human review for consequential remediation. Add an AWS service or agent only when it demonstrates a concrete architectural capability.
