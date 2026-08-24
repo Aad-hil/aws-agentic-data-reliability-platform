@@ -1,0 +1,6 @@
+{
+  "Parameters": {
+    "BedrockModelId": "REPLACE_WITH_ENABLED_BEDROCK_MODEL_ID",
+    "LogRetentionDays": "14"
+  }
+}
