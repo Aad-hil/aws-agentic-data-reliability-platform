@@ -8,6 +8,7 @@ from src.agents.bedrock import BedrockClient
 from src.agents.detection import DetectionAgent
 from src.agents.rca import RCAAgent
 from src.agents.recommendation import RecommendationAgent
+from src.agents.contracts import to_dict
 from src.agents.orchestrator import ReliabilityOrchestrator
 from src.reliability.evaluator import evaluate_rules
 from src.reliability.profiler import profile_rows
@@ -54,8 +55,8 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             workflow = orchestrator.run(reliability_report=summary, dataset_name=dataset_name,
                                         profile=profile, dataset_metadata=summary["dataset"])
             result = {"dataset": dataset_name, "reliability_report": summary,
-                      "incident": workflow.incident, "rca": workflow.rca,
-                      "recommendation": workflow.recommendation,
+                      "incident": to_dict(workflow.incident), "rca": to_dict(workflow.rca),
+                      "recommendation": to_dict(workflow.recommendation),
                       "processed_at": datetime.now(timezone.utc).isoformat(), "request_id": request_id}
             report_key = f"{REPORT_PREFIX.rstrip('/')}/{dataset_name}.json"
             s3.put_object(Bucket=bucket, Key=report_key,
