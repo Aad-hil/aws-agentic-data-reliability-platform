@@ -1,93 +1,93 @@
 # AWS Agentic Data Reliability Platform
 
-An AWS-native, multi-agent platform for detecting, diagnosing, and explaining data reliability issues with minimal human intervention.
+> Evidence-first, AWS-native multi-agent system for detecting data reliability issues, investigating likely root causes, and producing safe remediation recommendations.
 
-## Project Status
+[![CI](https://github.com/Aad-hil/aws-agentic-data-reliability-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/Aad-hil/aws-agentic-data-reliability-platform/actions/workflows/ci.yml)
 
-🚧 **Phase 0 — Repository foundation**
-
-This portfolio project is being built incrementally around four capabilities:
-
-- Detect data quality and reliability issues
-- Diagnose likely root causes
-- Explain findings in human-readable language
-- Recommend safe next actions
-
-The implementation intentionally uses a small number of focused agents and managed AWS services instead of over-engineering the platform.
-
-## Planned Flow
+## Architecture
 
 ```text
-Data Source
-    |
-    v
-Ingestion / Event Layer
-    |
-    v
-Reliability Detection Agent
-    |
-    +------> Profiling / Quality Checks
-    |
-    v
-Root Cause Analysis Agent
-    |
-    v
-Recommendation / Explanation Agent
-    |
-    v
-Results + Audit Trail
+S3 input/*.csv
+      | ObjectCreated
+      v
+AWS Lambda
+      |
+      v
+Reliability Engine
+(profile -> rules -> evaluate -> report)
+      |
+      v
+Orchestrator
+      |
+      +--> Detection Agent
+      +--> RCA Agent
+      +--> Recommendation Agent
+      |
+      v
+Amazon Bedrock
+      |
+      v
+S3 reports/*.json
 ```
 
-The exact AWS service mapping will be added as the implementation evolves. The goal is to demonstrate practical AWS architecture, agentic orchestration, observability, and testable software design.
+The deterministic engine establishes the evidence. Specialized agents interpret that evidence. Recommendations remain advisory and automatic destructive mutation is disabled.
 
-## Repository Structure
+## Current status
+
+- Phase 0 — Repository foundation: complete
+- Phase 1 — Data foundation: complete
+- Phase 2 — Deterministic reliability engine: complete
+- Phase 3 — Multi-agent reasoning + local E2E: complete
+- Phase 4.1 — S3 + Lambda boundary: complete
+- Phase 4.2 — Lambda + Bedrock workflow: open in PR #14
+
+## Repository layout
 
 ```text
-aws-agentic-data-reliability-platform/
-├── README.md
-├── LICENSE
-├── .gitignore
-├── .env.example
-├── requirements.txt
-├── docs/
-│   ├── architecture.md
-│   └── project-plan.md
-├── src/
-│   └── ...
-└── tests/
+.github/                 CI, templates, CODEOWNERS, Dependabot
+data/sample/             deterministic sample dataset
+docs/                    architecture and project plan
+infra/                   AWS SAM infrastructure
+src/agents/              Bedrock adapter and specialized agents
+src/reliability/         deterministic reliability engine
+src/lambda_handler.py    S3-triggered Lambda entry point
+tests/                   unit and integration tests
 ```
 
-## Local Setup
+## Local development
 
-Python 3.11+ is recommended.
+Python 3.12+ is the supported baseline.
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+python -m pytest -q
 ```
 
-Windows PowerShell:
+Tests use fakes for AWS/Bedrock boundaries, so the unit suite does not require AWS credentials.
 
-```powershell
-.venv\Scripts\Activate.ps1
-```
+## AWS direction
 
-Copy `.env.example` to `.env` and configure only the variables required by the current phase.
+AWS SAM is defined in `infra/template.yaml`. The target runtime is S3 ObjectCreated -> Lambda -> deterministic reliability analysis -> Bedrock agents -> S3 report.
 
-## Development Principles
+See:
+- [Architecture](docs/architecture.md)
+- [AWS execution boundary](docs/aws-execution-boundary.md)
+- [Project plan](docs/project-plan.md)
+- [Contributing](CONTRIBUTING.md)
+- [Security](SECURITY.md)
 
-1. Keep the system portfolio-sized and demonstrable.
-2. Prefer managed AWS services where they reduce operational overhead.
-3. Keep each agent responsible for one clear capability.
-4. Add tests with each meaningful implementation step.
-5. Never commit credentials, secrets, or local environment files.
-6. Favor explainability and traceability over unnecessary agent autonomy.
+## Engineering principles
 
-## Roadmap
-
-See [`docs/project-plan.md`](docs/project-plan.md) for the implementation sequence.
+- Evidence first
+- Specialized agents
+- Typed handoffs
+- Least-privilege IAM
+- Human-reviewed remediation
+- AWS-independent tests
+- Small, explainable architecture
 
 ## License
 
-MIT License. See [`LICENSE`](LICENSE).
+MIT License — see [LICENSE](LICENSE).
