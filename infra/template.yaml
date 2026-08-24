@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: AWS execution boundary for the data reliability platform.
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 30
+    MemorySize: 512
+    Environment:
+      Variables:
+        REPORT_PREFIX: reports/
+
+Resources:
+  ReliabilityBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  ReliabilityFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ..
+      Handler: src.lambda_handler.handler
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref ReliabilityBucket
+        - S3WritePolicy:
+            BucketName: !Ref ReliabilityBucket
+      Events:
+        InputUpload:
+          Type: S3
+          Properties:
+            Bucket: !Ref ReliabilityBucket
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: input/
+
+Outputs:
+  ReliabilityBucketName:
+    Description: S3 bucket for input datasets and generated reports
+    Value: !Ref ReliabilityBucket
+  ReliabilityFunctionName:
+    Description: Lambda function processing uploaded datasets
+    Value: !Ref ReliabilityFunction
