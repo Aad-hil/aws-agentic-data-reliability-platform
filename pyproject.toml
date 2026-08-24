@@ -1,0 +1,13 @@
+[project]
+name = "aws-agentic-data-reliability-platform"
+version = "0.1.0"
+description = "AWS-native multi-agent platform for data reliability detection, RCA, and remediation recommendations."
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
