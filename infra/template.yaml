@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: "2010-09-31"
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: AWS execution boundary for the agentic data reliability platform.
 Globals:
