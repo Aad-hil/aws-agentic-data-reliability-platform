@@ -23,3 +23,25 @@ def test_bedrock_rejects_invalid_json():
     client = BedrockClient(model_id="test", client=Fake(), max_attempts=1)
     with pytest.raises(ValueError, match="invalid JSON"):
         client.invoke_json(system_prompt="system", user_prompt="user")
+
+def test_bedrock_accepts_fenced_json():
+    class Fake:
+        def converse(self, **kwargs):
+            return {"output": {"message": {"content": [{"text": "```json\n{\"ok\": true}\n```"}]}}}
+    client = BedrockClient(model_id="test", client=Fake(), max_attempts=1)
+    assert client.invoke_json(system_prompt="system", user_prompt="user") == {"ok": True}
+
+def test_bedrock_extracts_json_with_surrounding_text():
+    class Fake:
+        def converse(self, **kwargs):
+            return {"output": {"message": {"content": [{"text": "Here is the result: {\"ok\": true}"}]}}}
+    client = BedrockClient(model_id="test", client=Fake(), max_attempts=1)
+    assert client.invoke_json(system_prompt="system", user_prompt="user") == {"ok": True}
+
+def test_bedrock_rejects_non_object_json():
+    class Fake:
+        def converse(self, **kwargs):
+            return {"output": {"message": {"content": [{"text": "[1, 2, 3]"}]}}}
+    client = BedrockClient(model_id="test", client=Fake(), max_attempts=1)
+    with pytest.raises(ValueError, match="must be a JSON object"):
+        client.invoke_json(system_prompt="system", user_prompt="user")
