@@ -29,9 +29,25 @@ def build_orchestrator() -> ReliabilityOrchestrator:
     client = BedrockClient(model_id=BEDROCK_MODEL_ID)
     return ReliabilityOrchestrator(DetectionAgent(client), RCAAgent(client), RecommendationAgent(client))
 
+def _normalize_records(event: dict[str, Any]) -> list[dict[str, Any]]:
+    """Normalize native S3 and S3 Object Created EventBridge events."""
+    records = event.get("Records")
+    if records:
+        return records
+
+    detail = event.get("detail", {})
+    bucket = detail.get("bucket", {})
+    obj = detail.get("object", {})
+    bucket_name = bucket.get("name")
+    object_key = obj.get("key")
+    if bucket_name and object_key:
+        return [{"s3": {"bucket": {"name": bucket_name}, "object": {"key": object_key}}}]
+
+    return []
+
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     request_id = getattr(context, "aws_request_id", str(uuid.uuid4()))
-    records = event.get("Records", [])
+    records = _normalize_records(event)
     _log("invocation_started", request_id=request_id, record_count=len(records))
     processed: list[dict[str, Any]] = []
     failures: list[dict[str, str]] = []
