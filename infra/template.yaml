@@ -28,6 +28,8 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
+      NotificationConfiguration:
+        EventBridgeConfiguration: {}
   ReliabilityFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -42,15 +44,20 @@ Resources:
               Resource: "*"
       Events:
         InputUpload:
-          Type: S3
+          Type: EventBridgeRule
           Properties:
-            Bucket: !Ref ReliabilityBucket
-            Events: s3:ObjectCreated:*
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: prefix
-                    Value: input/
+            Pattern:
+              source:
+                - aws.s3
+              detail-type:
+                - Object Created
+              detail:
+                bucket:
+                  name:
+                    - !Ref ReliabilityBucket
+                object:
+                  key:
+                    - prefix: input/
       LoggingConfig:
         LogFormat: JSON
         ApplicationLogLevel: INFO

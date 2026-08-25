@@ -50,11 +50,16 @@ def test_lambda_uses_structured_cloudwatch_logging():
     }
 
 
-def test_lambda_is_triggered_only_from_input_prefix():
+def test_s3_eventbridge_trigger_targets_input_prefix():
     template = load_template()
+    bucket = template["Resources"]["ReliabilityBucket"]
+    assert bucket["Properties"]["NotificationConfiguration"] == {"EventBridgeConfiguration": {}}
     event = template["Resources"]["ReliabilityFunction"]["Properties"]["Events"]["InputUpload"]
-    rules = event["Properties"]["Filter"]["S3Key"]["Rules"]
-    assert {"Name": "prefix", "Value": "input/"} in rules
+    assert event["Type"] == "EventBridgeRule"
+    pattern = event["Properties"]["Pattern"]
+    assert pattern["source"] == ["aws.s3"]
+    assert pattern["detail-type"] == ["Object Created"]
+    assert pattern["detail"]["object"]["key"] == [{"prefix": "input/"}]
 
 
 def test_example_parameters_contain_no_real_account_values():
