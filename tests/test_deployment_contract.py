@@ -40,6 +40,16 @@ def test_sam_template_has_expected_runtime_and_resources():
     assert "Dashboard" in resources
 
 
+def test_lambda_uses_structured_cloudwatch_logging():
+    template = load_template()
+    logging_config = template["Resources"]["ReliabilityFunction"]["Properties"]["LoggingConfig"]
+    assert logging_config == {
+        "LogFormat": "JSON",
+        "ApplicationLogLevel": "INFO",
+        "SystemLogLevel": "WARN",
+    }
+
+
 def test_lambda_is_triggered_only_from_input_prefix():
     template = load_template()
     event = template["Resources"]["ReliabilityFunction"]["Properties"]["Events"]["InputUpload"]

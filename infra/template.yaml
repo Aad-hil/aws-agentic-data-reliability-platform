@@ -51,7 +51,7 @@ Resources:
                 Rules:
                   - Name: prefix
                     Value: input/
-      Logging:
+      LoggingConfig:
         LogFormat: JSON
         ApplicationLogLevel: INFO
         SystemLogLevel: WARN
