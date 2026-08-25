@@ -53,7 +53,9 @@ def test_lambda_uses_structured_cloudwatch_logging():
 def test_s3_eventbridge_trigger_targets_input_prefix():
     template = load_template()
     bucket = template["Resources"]["ReliabilityBucket"]
-    assert bucket["Properties"]["NotificationConfiguration"] == {"EventBridgeConfiguration": {}}
+    assert bucket["Properties"]["NotificationConfiguration"] == {
+        "EventBridgeConfiguration": {"EventBridgeEnabled": True}
+    }
     event = template["Resources"]["ReliabilityFunction"]["Properties"]["Events"]["InputUpload"]
     assert event["Type"] == "EventBridgeRule"
     pattern = event["Properties"]["Pattern"]
