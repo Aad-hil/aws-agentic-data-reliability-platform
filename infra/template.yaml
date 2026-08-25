@@ -13,7 +13,8 @@ Globals:
 Parameters:
   BedrockModelId:
     Type: String
-    Description: Bedrock model ID enabled in the deployment region.
+    Default: us.amazon.nova-2-lite-v1:0
+    Description: Bedrock inference profile ID enabled in the deployment region.
   LogRetentionDays:
     Type: Number
     Default: 14
