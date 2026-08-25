@@ -28,6 +28,8 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
+      NotificationConfiguration:
+        EventBridgeConfiguration: {}
   ReliabilityFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -42,15 +44,20 @@ Resources:
               Resource: "*"
       Events:
         InputUpload:
-          Type: S3
+          Type: EventBridgeRule
           Properties:
-            Bucket: !Ref ReliabilityBucket
-            Events: s3:ObjectCreated:*
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: prefix
-                    Value: input/
+            Pattern:
+              source:
+                - aws.s3
+              detail-type:
+                - Object Created
+              detail:
+                bucket:
+                  name:
+                    - !Ref ReliabilityBucket
+                object:
+                  key:
+                    - prefix: input/
       LoggingConfig:
         LogFormat: JSON
         ApplicationLogLevel: INFO
@@ -74,7 +81,7 @@ Resources:
           "widgets": [
             {"type":"metric","x":0,"y":0,"width":12,"height":6,"properties":{"title":"Lambda Invocations","view":"timeSeries","region":"${AWS::Region}","metrics":[["AWS/Lambda","Invocations","FunctionName","${ReliabilityFunction}"]]}},
             {"type":"metric","x":12,"y":0,"width":12,"height":6,"properties":{"title":"Lambda Errors","view":"timeSeries","region":"${AWS::Region}","metrics":[["AWS/Lambda","Errors","FunctionName","${ReliabilityFunction}"]]}},
-            {"type":"metric","x":0,"y":6,"width":12,"height":6,"properties":{"title":"Lambda Duration","view":"timeSeries","region":"${AWS::Region}","metrics":[["AWS/Lambda","Duration","FunctionName","${ReliabilityFunction}"]]}}
+            {"type":"metric","x":0,"y":6,"width":12,"height":6,"properties":{"title":"Lambda Duration","view":"timeSeries","region":"${AWS::Region}","metrics":[["AWS/Lambda","Duration","FunctionName","${ReliabilityFunction"]]}}
           ]
         }
 Outputs:
