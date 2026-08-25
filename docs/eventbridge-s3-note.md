@@ -1,1 +1,0 @@
-S3 notification events use EventBridge to avoid SAM circular dependencies.
