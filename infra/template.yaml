@@ -29,7 +29,8 @@ Resources:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
       NotificationConfiguration:
-        EventBridgeConfiguration: {}
+        EventBridgeConfiguration:
+          EventBridgeEnabled: true
   ReliabilityFunction:
     Type: AWS::Serverless::Function
     Properties:
