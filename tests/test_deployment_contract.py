@@ -50,6 +50,14 @@ def test_lambda_uses_structured_cloudwatch_logging():
     }
 
 
+def test_lambda_has_bedrock_invoke_permission():
+    template = load_template()
+    statements = template["Resources"]["ReliabilityFunction"]["Properties"]["Policies"][2]["Statement"]
+    actions = statements[0]["Action"]
+    assert "bedrock:InvokeModel" in actions
+    assert "bedrock:Converse" in actions
+
+
 def test_s3_eventbridge_trigger_targets_input_prefix():
     template = load_template()
     bucket = template["Resources"]["ReliabilityBucket"]

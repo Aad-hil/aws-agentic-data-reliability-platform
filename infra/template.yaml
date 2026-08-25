@@ -41,7 +41,9 @@ Resources:
         - S3WritePolicy: {BucketName: !Ref ReliabilityBucket}
         - Statement:
             - Effect: Allow
-              Action: bedrock:Converse
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:Converse
               Resource: "*"
       Events:
         InputUpload:
