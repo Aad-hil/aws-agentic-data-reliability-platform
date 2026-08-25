@@ -1,0 +1,11 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "agentic-data-reliability"
+resolve_s3 = true
+s3_prefix = "agentic-data-reliability"
+region = "us-east-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "BedrockModelId=us.amazon.nova-2-lite-v1:0 LogRetentionDays=14"
+image_repositories = []
