@@ -1,0 +1,30 @@
+{
+  "dataset": "customers-e2e-003",
+  "reliability_report": {
+    "findings": [
+      {"check": "completeness", "column": "age"},
+      {"check": "validity", "column": "email"},
+      {"check": "validity", "column": "age"},
+      {"check": "validity", "column": "plan"},
+      {"check": "schema", "column": null}
+    ]
+  },
+  "incident": {
+    "failed_checks": ["completeness", "validity"],
+    "affected_columns": ["age", "email", "plan"]
+  },
+  "rca": {
+    "hypotheses": [
+      {
+        "hypothesis": "Data entry errors caused invalid values.",
+        "evidence": ["age contains a missing value", "email contains an invalid format"],
+        "confidence": 0.8
+      }
+    ]
+  },
+  "recommendation": {
+    "action": "Review and correct the invalid records.",
+    "evidence": ["deterministic findings"],
+    "automatic_mutation_allowed": false
+  }
+}
