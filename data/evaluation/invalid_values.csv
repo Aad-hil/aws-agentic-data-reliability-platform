@@ -1,0 +1,4 @@
+customer_id,full_name,email,signup_date,country,age,plan,monthly_spend
+V001,Alex Kim,invalid-email,2026-03-01,US,-5,basic,29.99
+V002,Priya Shah,priya@example.com,2026-03-02,IN,35,starter,59.99
+V003,Leo Wong,leo@example.com,2026-03-03,SG,44,pro,149.99
