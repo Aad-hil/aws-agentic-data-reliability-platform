@@ -25,10 +25,13 @@
 
 ### Phase 4 — AWS runtime
 - [x] 4.1 S3 + Lambda execution boundary
-- [ ] 4.2 Lambda + Bedrock agent workflow
-- [ ] 4.3 Error handling, retry boundaries, and structured logging
-- [ ] 4.4 CloudWatch observability and operational metrics
-- [ ] 4.5 Deployment validation and runbook
+- [x] 4.2 Lambda + Bedrock agent workflow
+- [x] 4.3 Error handling, retry boundaries, and structured logging
+- [x] 4.4 CloudWatch observability and operational metrics
+- [x] 4.5 Deployment validation and runbook
+- [x] Phase 4 E2E validation: S3 → EventBridge → Lambda → Bedrock → Detection → RCA → Recommendation → S3 report
+
+**Phase 4 checkpoint:** completed against the deployed `agentic-data-reliability` stack in `us-east-1`. The controlled E2E run processed one dataset with zero Lambda invocation failures and produced a persisted reliability report.
 
 ### Phase 5 — Evaluation and portfolio hardening
 - [ ] Representative reliability cases
