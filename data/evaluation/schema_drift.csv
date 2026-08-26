@@ -1,0 +1,4 @@
+customer_id,full_name,email,signup_date,country,age,plan,monthly_spend,loyalty_tier
+S001,Nina Patel,nina@example.com,2026-04-01,IN,29,basic,29.99,gold
+S002,Tom Reed,tom@example.com,2026-04-02,US,38,pro,59.99,silver
+S003,Ella Wong,ella@example.com,2026-04-03,SG,46,enterprise,149.99,platinum
