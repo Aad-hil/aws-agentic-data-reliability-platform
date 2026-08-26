@@ -72,6 +72,22 @@ def test_s3_eventbridge_trigger_targets_input_prefix():
     assert pattern["detail"]["object"]["key"] == [{"prefix": "input/"}]
 
 
+def test_observability_metric_filters_cover_processed_failed_and_duration():
+    resources = load_template()["Resources"]
+
+    processed = resources["ProcessedMetricFilter"]
+    assert processed["Properties"]["FilterPattern"] == '{ $.event = "dataset_processed" }'
+    assert processed["Properties"]["MetricTransformations"][0]["MetricName"] == "DatasetsProcessed"
+
+    failed = resources["FailedMetricFilter"]
+    assert failed["Properties"]["FilterPattern"] == '{ $.event = "dataset_processed" && $.status = "failed" }'
+    assert failed["Properties"]["MetricTransformations"][0]["MetricName"] == "DatasetsFailed"
+
+    duration = resources["DurationMetricFilter"]
+    assert duration["Properties"]["FilterPattern"] == '{ $.event = "dataset_processed" && $.duration_ms = * }'
+    assert duration["Properties"]["MetricTransformations"][0]["MetricName"] == "ProcessingDurationMs"
+
+
 def test_example_parameters_contain_no_real_account_values():
     params = json.loads(PARAMETERS.read_text())
     model = params["Parameters"]["BedrockModelId"]
