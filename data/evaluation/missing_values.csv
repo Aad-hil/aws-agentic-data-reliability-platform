@@ -1,0 +1,4 @@
+customer_id,full_name,email,signup_date,country,age,plan,monthly_spend
+M001,John Doe,john@example.com,2026-02-01,US,,basic,29.99
+M002,Jane Doe,jane@example.com,2026-02-02,US,34,pro,59.99
+M003,Sam Lee,sam@example.com,2026-02-03,SG,41,enterprise,149.99
