@@ -51,5 +51,5 @@ def test_mixed_issues_fixture_contains_multiple_defect_classes():
     rows = load("mixed_issues.csv")
     assert any(row["age"] == "" for row in rows)
     assert any(not valid_email(row["email"]) for row in rows)
-    assert any(int(row["age"]) < 0 for row in rows)
+    assert any(row["age"] and int(row["age"]) < 0 for row in rows)
     assert any(row["plan"] not in ALLOWED_PLANS for row in rows)
