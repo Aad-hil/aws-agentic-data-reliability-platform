@@ -1,0 +1,4 @@
+customer_id,full_name,email,signup_date,country,age,plan,monthly_spend
+X001,Chris Ray,invalid-email,2026-05-01,US,,basic,29.99
+X002,Neha Rao,neha@example.com,2026-05-02,IN,-2,starter,59.99
+X003,Omar Ali,omar@example.com,2026-05-03,AE,45,pro,149.99
