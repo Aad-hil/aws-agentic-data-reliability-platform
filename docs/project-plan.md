@@ -31,8 +31,6 @@
 - [x] 4.5 Deployment validation and runbook
 - [x] Phase 4 E2E validation: S3 → EventBridge → Lambda → Detection → RCA → Recommendation → Bedrock → S3 report
 
-**Phase 4 checkpoint:** completed against the deployed `agentic-data-reliability` stack in `us-east-1`. A controlled E2E run processed a faulty dataset and produced a persisted reliability report.
-
 ### Phase 5 — Evaluation and portfolio hardening
 - [x] Representative reliability cases
 - [x] Agent output regression/evaluation suite
@@ -42,20 +40,26 @@
 - [x] Fresh AWS E2E validation with live metric datapoints
 - [x] Portfolio documentation and evidence checkpoint
 
-**Phase 5 checkpoint:** completed on the deployed `agentic-data-reliability` stack in `us-east-1`. A fresh intentionally faulty dataset produced `DatasetsProcessed=1`, `DatasetsFailed=1`, and `ProcessingDurationMs=9281 ms`. The persisted report had status `failed`, score `35`, and five findings (four errors and one warning).
-
 ### Phase 6 — Portfolio performance and production-readiness
 - [x] 6.1 Cost and latency evidence baseline
-- [ ] 6.2 Repeated performance benchmark across representative datasets
+- [x] 6.2 Repeated performance benchmark across representative datasets
 - [x] 6.3 Security and IAM review
 - [x] 6.4 Failure/retry and operational resilience review
-- [ ] 6.5 Final portfolio walkthrough and architecture evidence
+- [x] 6.5 Final portfolio walkthrough and architecture evidence
 
-**Phase 6.1 checkpoint:** a fresh AWS E2E execution of `customers-e2e-final-v2` recorded `ProcessingDurationMs=9281 ms` average for a three-row intentionally faulty dataset. The same execution emitted `DatasetsProcessed=1` and `DatasetsFailed=1`. No single-run dollar estimate is claimed; Bedrock usage and account pricing should be measured over a representative benchmark before cost conclusions are drawn.
+## Phase 6 checkpoints
 
-**Phase 6.3 checkpoint:** completed a security/IAM review and hardened the S3 boundary with AES-256 encryption + Bucket Key, versioning, all four S3 Public Access Block controls, and an explicit deny for non-TLS S3 requests. Lambda permissions remain service/action scoped; CloudWatch metric writes are restricted to the project namespace. Bedrock inference remains the only documented IAM limitation because the configurable inference-profile/model resource is currently represented as `*` for deployment portability. Static contract tests cover the security controls.
+**6.1 / 6.2 — Performance evidence:** three live executions of the same three-row representative faulty dataset recorded `ProcessingDurationMs` values of `9055 ms`, `10779 ms`, and `8067 ms`, averaging **9300 ms**. Each run produced a persisted S3 report. This establishes a repeatable portfolio baseline without claiming an SLA or fabricated dollar cost.
 
-**Phase 6.4 checkpoint:** completed the failure/retry and operational resilience review. Bedrock transient failures retain bounded exponential-backoff retries; malformed model output gets one repair attempt; Lambda now surfaces record failures as invocation errors instead of silently acknowledging them; asynchronous Lambda retries are capped at two attempts within one hour and exhausted events are routed to an automatically provisioned SQS failure destination. The remaining production hardening item is durable idempotency for multi-record/replayed events.
+**6.3 — Security/IAM:** S3 encryption + Bucket Key, versioning, all four Public Access Block controls, and an explicit non-TLS deny are enabled. Lambda S3 permissions and CloudWatch metric writes are scoped; Bedrock inference is restricted to `InvokeModel`/`Converse`. The configurable Bedrock resource wildcard remains a documented portability trade-off.
+
+**6.4 — Resilience:** transient Bedrock failures retain bounded exponential-backoff retries; malformed model output gets one repair attempt; Lambda surfaces record failures as invocation errors; asynchronous retries are capped at two attempts within one hour; exhausted failures are routed to an SQS failure destination. Durable idempotency for multi-record/replayed events remains future hardening.
+
+**6.5 — Portfolio walkthrough and evidence:** documentation now reflects the actual deployed architecture, repeated AWS benchmark, security posture, resilience boundaries, verification commands, and known limitations. The repository is ready for a final portfolio review rather than another architectural expansion.
+
+## Remaining production hardening
+
+The project intentionally stops short of adding infrastructure without a demonstrated need. The main documented future improvement is durable idempotency for multi-record/replayed events, potentially using a request/object-version key in DynamoDB or another durable store.
 
 ## Scope guardrails
 

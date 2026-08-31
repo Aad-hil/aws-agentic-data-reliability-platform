@@ -27,7 +27,13 @@ Orchestrator
       +--> Recommendation -> Advisory action
       |
       v
+Amazon Bedrock
+      |
+      v
 S3 reports/*.json
+      |
+      +--> CloudWatch Logs + Metrics
+      +--> SQS failure destination (exhausted async failures)
 ```
 
 ## Responsibilities
@@ -42,7 +48,10 @@ S3 reports/*.json
 | Orchestrator | Sequence agents and preserve typed state |
 | Lambda | AWS event-driven execution boundary |
 | S3 | Input and report storage |
+| EventBridge | Route S3 ObjectCreated events to Lambda |
 | Bedrock | Model inference |
+| CloudWatch | Logs and operational metrics |
+| SQS failure destination | Capture exhausted asynchronous Lambda failures |
 
 ## Design decisions
 
@@ -54,12 +63,16 @@ S3 reports/*.json
 
 **Layered AWS integration:** Lambda owns execution, the orchestrator owns sequencing, and the Bedrock adapter owns model invocation.
 
+**Bounded recovery:** transient model failures retry locally, malformed model output gets one repair attempt, and asynchronous Lambda retries are capped with an SQS failure destination.
+
+**Deterministic report identity:** reports use a stable dataset-based key to avoid unbounded duplicate report objects during replay.
+
 ## Security and reliability
 
-- S3 server-side encryption is enabled.
-- IAM is scoped to required services/actions.
+- S3 server-side encryption and public-access controls are enabled.
+- IAM is scoped to required services/actions, with the configurable Bedrock resource scope documented as the remaining limitation.
 - Credentials are never committed.
 - CI runs on pull requests and pushes to `main`.
 - Tests run without live AWS access.
-
-Phase 4.3 will add explicit failure boundaries, retry policy, and structured operational logging.
+- Lambda failures are surfaced instead of silently acknowledged.
+- Automatic destructive remediation remains disabled.
