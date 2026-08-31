@@ -85,11 +85,11 @@ def test_observability_metrics_cover_processed_failed_and_duration():
     resources = load_template()["Resources"]
 
     processed = resources["ProcessedMetricFilter"]
-    assert processed["Properties"]["FilterPattern"] == '{ $.event = "dataset_processed" }'
+    assert processed["Properties"]["FilterPattern"] == "dataset_processed"
     assert processed["Properties"]["MetricTransformations"][0]["MetricName"] == "DatasetsProcessed"
 
     failed = resources["FailedMetricFilter"]
-    assert failed["Properties"]["FilterPattern"] == '{ $.event = "dataset_processed" && $.status = "failed" }'
+    assert failed["Properties"]["FilterPattern"] == "dataset_processed failed"
     assert failed["Properties"]["MetricTransformations"][0]["MetricName"] == "DatasetsFailed"
 
     assert "DurationMetricFilter" not in resources
