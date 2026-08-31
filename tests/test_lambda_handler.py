@@ -11,6 +11,11 @@ class FakeS3:
 class FakeCloudWatch:
     def __init__(self): self.calls = []
     def put_metric_data(self, **kwargs): self.calls.append(kwargs)
+class FakeBoto3:
+    def __init__(self, cloudwatch): self.cloudwatch = cloudwatch
+    def client(self, service_name, **kwargs):
+        assert service_name == "cloudwatch"
+        return self.cloudwatch
 class FakeOrchestrator:
     def run(self, **kwargs):
         from src.agents.contracts import Incident, Priority, RCAResult, Recommendation, RootCauseHypothesis
@@ -24,7 +29,7 @@ def test_handler_processes_csv_and_publishes_duration_metric(monkeypatch):
     fake = FakeS3()
     fake_cloudwatch = FakeCloudWatch()
     monkeypatch.setattr(lambda_handler, "s3", fake)
-    monkeypatch.setattr(lambda_handler, "cloudwatch", fake_cloudwatch)
+    monkeypatch.setattr(lambda_handler, "boto3", FakeBoto3(fake_cloudwatch))
     monkeypatch.setattr(lambda_handler, "build_orchestrator", lambda: FakeOrchestrator())
     result = lambda_handler.handler({"Records": [{"s3": {"bucket": {"name": "demo-bucket"}, "object": {"key": "input/customers.csv"}}}]}, None)
     assert result["processed"][0]["report_key"] == "reports/customers.json"
