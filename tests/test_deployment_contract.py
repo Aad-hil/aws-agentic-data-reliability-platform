@@ -58,6 +58,13 @@ def test_lambda_has_bedrock_invoke_permission():
     assert "bedrock:Converse" in actions
 
 
+def test_lambda_has_cloudwatch_metric_permission():
+    template = load_template()
+    statements = template["Resources"]["ReliabilityFunction"]["Properties"]["Policies"][2]["Statement"]
+    assert {"cloudwatch:PutMetricData"} == set(statements[1]["Action"])
+    assert statements[1]["Resource"] == "*"
+
+
 def test_s3_eventbridge_trigger_targets_input_prefix():
     template = load_template()
     bucket = template["Resources"]["ReliabilityBucket"]
@@ -66,13 +73,12 @@ def test_s3_eventbridge_trigger_targets_input_prefix():
     }
     event = template["Resources"]["ReliabilityFunction"]["Properties"]["Events"]["InputUpload"]
     assert event["Type"] == "EventBridgeRule"
-    pattern = event["Properties"]["Pattern"]
-    assert pattern["source"] == ["aws.s3"]
-    assert pattern["detail-type"] == ["Object Created"]
-    assert pattern["detail"]["object"]["key"] == [{"prefix": "input/"}]
+    assert event["Properties"]["Pattern"]["source"] == ["aws.s3"]
+    assert event["Properties"]["Pattern"]["detail-type"] == ["Object Created"]
+    assert event["Properties"]["Pattern"]["detail"]["object"]["key"] == [{"prefix": "input/"}]
 
 
-def test_observability_metric_filters_cover_processed_failed_and_duration():
+def test_observability_metric_filters_cover_processed_and_failed():
     resources = load_template()["Resources"]
 
     processed = resources["ProcessedMetricFilter"]
@@ -83,9 +89,15 @@ def test_observability_metric_filters_cover_processed_failed_and_duration():
     assert failed["Properties"]["FilterPattern"] == '{ $.event = "dataset_processed" && $.status = "failed" }'
     assert failed["Properties"]["MetricTransformations"][0]["MetricName"] == "DatasetsFailed"
 
-    duration = resources["DurationMetricFilter"]
-    assert duration["Properties"]["FilterPattern"] == '{ $.event = "dataset_processed" && $.duration_ms = * }'
-    assert duration["Properties"]["MetricTransformations"][0]["MetricName"] == "ProcessingDurationMs"
+    assert "DurationMetricFilter" not in resources
+
+
+def test_dashboard_covers_reliability_metrics():
+    dashboard = load_template()["Resources"]["Dashboard"]["Properties"]["DashboardBody"]
+    assert "DatasetsProcessed" in dashboard
+    assert "DatasetsFailed" in dashboard
+    assert "ProcessingDurationMs" in dashboard
+    assert "Lambda Invocations & Errors" in dashboard
 
 
 def test_example_parameters_contain_no_real_account_values():
