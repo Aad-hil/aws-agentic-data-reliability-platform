@@ -87,7 +87,7 @@ Resources:
     Type: AWS::Logs::MetricFilter
     Properties:
       LogGroupName: !Ref ReliabilityLogGroup
-      FilterPattern: '{ $.event = "dataset_processed" }'
+      FilterPattern: 'dataset_processed'
       MetricTransformations:
         - MetricNamespace: AgenticDataReliability
           MetricName: DatasetsProcessed
@@ -97,7 +97,7 @@ Resources:
     Type: AWS::Logs::MetricFilter
     Properties:
       LogGroupName: !Ref ReliabilityLogGroup
-      FilterPattern: '{ $.event = "dataset_processed" && $.status = "failed" }'
+      FilterPattern: 'dataset_processed failed'
       MetricTransformations:
         - MetricNamespace: AgenticDataReliability
           MetricName: DatasetsFailed
