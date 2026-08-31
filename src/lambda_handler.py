@@ -17,17 +17,34 @@ from src.reliability.report import build_reliability_summary
 logger = logging.getLogger(__name__)
 logger.setLevel(os.getenv("LOG_LEVEL", "INFO"))
 s3 = boto3.client("s3")
+cloudwatch = boto3.client("cloudwatch")
 REPORT_PREFIX = os.getenv("REPORT_PREFIX", "reports/")
 BEDROCK_MODEL_ID = os.getenv("BEDROCK_MODEL_ID", "")
 
+
 def _log(event: str, **fields: Any) -> None:
     logger.info(json.dumps({"event": event, "timestamp": datetime.now(timezone.utc).isoformat(), **fields}, default=str))
+
+
+def _publish_processing_duration(duration_ms: int) -> None:
+    cloudwatch.put_metric_data(
+        Namespace="AgenticDataReliability",
+        MetricData=[
+            {
+                "MetricName": "ProcessingDurationMs",
+                "Value": duration_ms,
+                "Unit": "Milliseconds",
+            }
+        ],
+    )
+
 
 def build_orchestrator() -> ReliabilityOrchestrator:
     if not BEDROCK_MODEL_ID:
         raise RuntimeError("BEDROCK_MODEL_ID must be configured")
     client = BedrockClient(model_id=BEDROCK_MODEL_ID)
     return ReliabilityOrchestrator(DetectionAgent(client), RCAAgent(client), RecommendationAgent(client))
+
 
 def _normalize_records(event: dict[str, Any]) -> list[dict[str, Any]]:
     """Normalize native S3 and S3 Object Created EventBridge events."""
@@ -44,6 +61,7 @@ def _normalize_records(event: dict[str, Any]) -> list[dict[str, Any]]:
         return [{"s3": {"bucket": {"name": bucket_name}, "object": {"key": object_key}}}]
 
     return []
+
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     request_id = getattr(context, "aws_request_id", str(uuid.uuid4()))
@@ -79,6 +97,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                           Body=json.dumps(result, indent=2, default=str).encode("utf-8"),
                           ContentType="application/json")
             elapsed_ms = int((datetime.now(timezone.utc) - started).total_seconds() * 1000)
+            _publish_processing_duration(elapsed_ms)
             processed.append({"input_key": key, "report_key": report_key, "status": summary["status"]})
             _log("dataset_processed", request_id=request_id, bucket=bucket, key=key,
                  dataset=dataset_name, status=summary["status"], duration_ms=elapsed_ms)
