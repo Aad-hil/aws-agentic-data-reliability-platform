@@ -47,61 +47,56 @@ The deterministic engine establishes the evidence. Specialized agents interpret 
 - Phase 4 — AWS runtime and E2E validation: complete
 - Phase 5 — Agent evaluation and observability hardening: complete
 - Phase 6.1 — Cost and latency evidence baseline: complete
+- Phase 6.2 — Repeated performance benchmark: complete
 - Phase 6.3 — Security and IAM review: complete
 - Phase 6.4 — Failure/retry and operational resilience review: complete
+- Phase 6.5 — Final portfolio walkthrough and architecture evidence: complete
 
-### Live AWS validation checkpoint
+## Portfolio evidence checkpoint
 
-The deployed `agentic-data-reliability` stack in `us-east-1` was validated with a fresh intentionally faulty dataset. The run successfully traversed S3 → EventBridge → Lambda → Bedrock workflow → reliability report → CloudWatch observability.
+The platform has been validated through repeated local, CI, and live AWS checkpoints. The deployed `agentic-data-reliability` stack in `us-east-1` uses S3, EventBridge, Lambda, Amazon Bedrock, CloudWatch, and an SQS failure destination.
 
-Observed CloudWatch datapoints from the fresh E2E run:
+### Live AWS validation
+
+A fresh intentionally faulty dataset traversed the production-style S3 → EventBridge → Lambda → Bedrock workflow and produced a persisted reliability report. CloudWatch recorded:
 
 | Metric | Observed value |
 |---|---:|
 | `DatasetsProcessed` | `1` |
 | `DatasetsFailed` | `1` |
-| `ProcessingDurationMs` | `9281 ms` |
+| `ProcessingDurationMs` | `9281 ms` average |
 
-The reliability report for the test dataset was persisted to S3 with status `failed`, score `35`, and five findings (four errors and one warning). This validates both the data-quality path and the operational telemetry path.
+The corresponding reliability report had status `failed`, score `35`, and five findings (four errors and one warning). The `failed` report status represents the dataset's reliability assessment; it is distinct from a platform/runtime failure.
 
-## Performance and cost baseline
+### Repeated performance benchmark
 
-The fresh E2E execution completed in approximately **9.3 seconds** for a three-row dataset. This is a measured latency baseline, not a production SLA. The repository deliberately avoids claiming a fabricated single-run dollar cost; actual cost depends on Lambda duration/memory, Bedrock token usage, request volume, and account pricing.
+Three fresh executions of the representative `mixed_issues.csv` dataset produced persisted reports and these observed duration metrics:
 
-The next useful benchmark is a repeated run across representative clean and faulty datasets, capturing latency and model usage before making optimization decisions.
+| Run | Processing duration |
+|---|---:|
+| `benchmark-run-1c` | 9055 ms |
+| `benchmark-run-2` | 10779 ms |
+| `benchmark-run-3` | 8067 ms |
+| **Mean** | **9300 ms (9.3 s)** |
 
-See [Performance and cost evidence](docs/performance.md) for the measurement and interpretation.
+Observed latency ranged from **8.1 to 10.8 seconds**. This is a measured evidence baseline, not a production SLA. No fabricated dollar cost is claimed; meaningful cost analysis requires Bedrock token usage and account billing data.
 
 ## Security posture
 
-Phase 6.3 hardened and documented the AWS boundary:
-
-- S3 AES-256 server-side encryption with Bucket Key
-- S3 versioning for recovery
-- All four S3 Public Access Block controls enabled
-- Explicit S3 deny for non-TLS requests
-- Lambda S3 permissions scoped to the project bucket
-- CloudWatch metric writes limited to `PutMetricData` in the project namespace
-- Bedrock limited to inference actions (`InvokeModel` and `Converse`)
-- No credentials or `.env` files committed
-- Destructive remediation remains disabled
-
-The Bedrock resource is currently `*` as a documented portability trade-off for configurable inference profiles/models; the action set remains restricted. See [Security and IAM review](docs/security-iam-review.md) for the finding and future hardening path.
+The AWS boundary includes S3 AES-256 server-side encryption with Bucket Key, versioning, all four Public Access Block controls, and an explicit deny for non-TLS requests. Lambda S3 access is scoped to the project bucket, CloudWatch writes are restricted to the project namespace, and Bedrock access is limited to inference actions. The configurable Bedrock resource remains `*` as a documented portability trade-off.
 
 ## Resilience posture
 
-Phase 6.4 adds explicit failure boundaries rather than silently acknowledging failed work:
+Failures have explicit, bounded recovery paths:
 
-- Bedrock retries transient throttling/service failures with bounded exponential backoff and jitter.
-- Recommendation output gets one repair attempt when the model returns malformed or schema-invalid JSON.
-- Lambda raises an invocation-level error when any input record fails, allowing the asynchronous runtime to retry it.
-- Lambda retries are capped at **2 attempts within 1 hour**.
-- Exhausted failures are routed to an automatically provisioned **SQS failure destination** for investigation/reprocessing.
-- Invalid non-input objects are skipped without entering a retry loop.
+- Transient Bedrock service failures use bounded exponential-backoff retries with jitter.
+- Malformed or schema-invalid recommendation output gets one repair attempt.
+- Lambda surfaces input-processing failures as invocation errors instead of silently acknowledging them.
+- Lambda asynchronous retries are capped at two attempts within one hour.
+- Exhausted failures are routed to an automatically provisioned SQS failure destination.
+- Non-input objects are skipped without entering a retry loop.
 
-The remaining production hardening item is durable idempotency for multi-record/replayed events. The current report key is deterministic, so repeated processing does not create unbounded report objects.
-
-See [Failure, retry, and resilience review](docs/resilience-review.md) for the detailed boundary analysis.
+Durable idempotency for multi-record/replayed events remains a documented future hardening item. Report keys are deterministic, preventing unbounded duplicate report objects.
 
 ## Repository layout
 
@@ -129,11 +124,11 @@ pip install -r requirements-dev.txt
 python -m pytest -q
 ```
 
-Tests use fakes for AWS/Bedrock boundaries, so the unit suite does not require AWS credentials.
+The test suite uses fakes for AWS/Bedrock boundaries, so unit tests do not require AWS credentials.
 
 ## AWS deployment
 
-AWS SAM is defined in `infra/template.yaml`. The deployed target is:
+AWS SAM is defined in `infra/template.yaml`.
 
 ```text
 S3 input/*.csv
@@ -146,6 +141,8 @@ S3 input/*.csv
 ```
 
 The stack is designed around least-privilege permissions and keeps automatic destructive remediation disabled.
+
+## Documentation
 
 See:
 - [Architecture](docs/architecture.md)
