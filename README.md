@@ -32,8 +32,8 @@ Amazon Bedrock
       v
 S3 reports/*.json
       |
-      v
-CloudWatch Logs + Metrics
+      +--> CloudWatch Logs + Metrics
+      +--> SQS failure destination
 ```
 
 The deterministic engine establishes the evidence. Specialized agents interpret that evidence. Recommendations remain advisory and automatic destructive mutation is disabled.
@@ -47,34 +47,27 @@ The deterministic engine establishes the evidence. Specialized agents interpret 
 - Phase 4 — AWS runtime and E2E validation: complete
 - Phase 5 — Agent evaluation and observability hardening: complete
 - Phase 6.1 — Cost and latency evidence baseline: complete
+- Phase 6.2 — Repeated performance benchmark: complete
 - Phase 6.3 — Security and IAM review: complete
 - Phase 6.4 — Failure/retry and operational resilience review: complete
+- Phase 6.5 — Final portfolio walkthrough and architecture evidence: complete
 
 ### Live AWS validation checkpoint
 
-The deployed `agentic-data-reliability` stack in `us-east-1` was validated with a fresh intentionally faulty dataset. The run successfully traversed S3 → EventBridge → Lambda → Bedrock workflow → reliability report → CloudWatch observability.
+The deployed `agentic-data-reliability` stack in `us-east-1` was exercised repeatedly with the representative three-row `mixed_issues.csv` evaluation case. The workflow traverses S3 → EventBridge → Lambda → deterministic analysis → multi-agent Bedrock workflow → S3 report → CloudWatch observability.
 
-Observed CloudWatch datapoints from the fresh E2E run:
+Three benchmark executions produced persisted reports and these duration observations:
 
-| Metric | Observed value |
+| Run | ProcessingDurationMs |
 |---|---:|
-| `DatasetsProcessed` | `1` |
-| `DatasetsFailed` | `1` |
-| `ProcessingDurationMs` | `9281 ms` |
+| `benchmark-run-1c` | `9055 ms` |
+| `benchmark-run-2` | `10779 ms` |
+| `benchmark-run-3` | `8067 ms` |
+| **Mean** | **9300 ms** |
 
-The reliability report for the test dataset was persisted to S3 with status `failed`, score `35`, and five findings (four errors and one warning). This validates both the data-quality path and the operational telemetry path.
-
-## Performance and cost baseline
-
-The fresh E2E execution completed in approximately **9.3 seconds** for a three-row dataset. This is a measured latency baseline, not a production SLA. The repository deliberately avoids claiming a fabricated single-run dollar cost; actual cost depends on Lambda duration/memory, Bedrock token usage, request volume, and account pricing.
-
-The next useful benchmark is a repeated run across representative clean and faulty datasets, capturing latency and model usage before making optimization decisions.
-
-See [Performance and cost evidence](docs/performance.md) for the measurement and interpretation.
+This is a portfolio performance baseline, not a production SLA or load-test result.
 
 ## Security posture
-
-Phase 6.3 hardened and documented the AWS boundary:
 
 - S3 AES-256 server-side encryption with Bucket Key
 - S3 versioning for recovery
@@ -86,22 +79,18 @@ Phase 6.3 hardened and documented the AWS boundary:
 - No credentials or `.env` files committed
 - Destructive remediation remains disabled
 
-The Bedrock resource is currently `*` as a documented portability trade-off for configurable inference profiles/models; the action set remains restricted. See [Security and IAM review](docs/security-iam-review.md) for the finding and future hardening path.
+The Bedrock resource is currently `*` as a documented portability trade-off for configurable inference profiles/models; the action set remains restricted.
 
 ## Resilience posture
 
-Phase 6.4 adds explicit failure boundaries rather than silently acknowledging failed work:
-
 - Bedrock retries transient throttling/service failures with bounded exponential backoff and jitter.
-- Recommendation output gets one repair attempt when the model returns malformed or schema-invalid JSON.
-- Lambda raises an invocation-level error when any input record fails, allowing the asynchronous runtime to retry it.
-- Lambda retries are capped at **2 attempts within 1 hour**.
-- Exhausted failures are routed to an automatically provisioned **SQS failure destination** for investigation/reprocessing.
+- Recommendation output gets one repair attempt when model output is malformed or schema-invalid.
+- Lambda raises an invocation-level error when an input record fails.
+- Lambda asynchronous retries are capped at 2 attempts within 1 hour.
+- Exhausted failures are routed to an SQS failure destination for investigation/reprocessing.
 - Invalid non-input objects are skipped without entering a retry loop.
 
-The remaining production hardening item is durable idempotency for multi-record/replayed events. The current report key is deterministic, so repeated processing does not create unbounded report objects.
-
-See [Failure, retry, and resilience review](docs/resilience-review.md) for the detailed boundary analysis.
+The remaining production hardening item is durable idempotency for multi-record/replayed events.
 
 ## Repository layout
 
@@ -129,25 +118,22 @@ pip install -r requirements-dev.txt
 python -m pytest -q
 ```
 
-Tests use fakes for AWS/Bedrock boundaries, so the unit suite does not require AWS credentials.
+The local test suite is AWS-independent and uses fakes for AWS/Bedrock boundaries.
 
 ## AWS deployment
 
-AWS SAM is defined in `infra/template.yaml`. The deployed target is:
+AWS SAM is defined in `infra/template.yaml`.
 
-```text
-S3 input/*.csv
-  -> EventBridge ObjectCreated
-  -> Lambda
-  -> deterministic reliability analysis
-  -> Bedrock agents
-  -> S3 reports/*.json
-  -> CloudWatch logs/metrics
+```bash
+sam validate --template-file infra/template.yaml --lint
+sam build --template-file infra/template.yaml
+sam deploy
 ```
 
-The stack is designed around least-privilege permissions and keeps automatic destructive remediation disabled.
+The stack provisions the S3/EventBridge/Lambda execution boundary, Bedrock integration, CloudWatch observability, dashboard, and Lambda failure destination.
 
-See:
+## Documentation
+
 - [Architecture](docs/architecture.md)
 - [AWS execution boundary](docs/aws-execution-boundary.md)
 - [Agent evaluation](docs/agent-evaluation.md)

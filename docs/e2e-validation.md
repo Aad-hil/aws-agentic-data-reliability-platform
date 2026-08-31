@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document records the live AWS validation checkpoint for the deployed reliability platform. It captures evidence from a real S3-triggered execution rather than relying only on unit tests or infrastructure deployment status.
+This document records the live AWS validation checkpoints for the deployed reliability platform. It captures evidence from real S3-triggered executions rather than relying only on unit tests or infrastructure deployment status.
 
 ## Validated flow
 
@@ -28,48 +28,59 @@ CloudWatch Logs + Metrics
 
 - CloudFormation stack: `agentic-data-reliability`
 - Region: `us-east-1`
-- Runtime: Python 3.12
+- Lambda runtime: Python 3.12
+- Lambda memory: 512 MB
 - Test case: intentionally faulty `mixed_issues.csv`
-- Fresh E2E object: `input/customers-e2e-final-v2.csv`
+- Representative dataset size: 3 rows
 
-## Evidence
+## Final repeated benchmark evidence
 
-The fresh execution produced a persisted reliability report with:
+After the resilience hardening deployment, the same representative dataset was uploaded three times under unique input keys:
 
-- status: `failed`
-- score: `35`
-- finding count: `5`
-- severity counts: `4 error`, `1 warning`, `0 critical`, `0 info`
+| Run | Input | Report | ProcessingDurationMs |
+|---|---|---|---:|
+| 1 | `benchmark-run-1c.csv` | `benchmark-run-1c.json` | `9055 ms` |
+| 2 | `benchmark-run-2.csv` | `benchmark-run-2.json` | `10779 ms` |
+| 3 | `benchmark-run-3.csv` | `benchmark-run-3.json` | `8067 ms` |
 
-The report identified representative issues including a missing age value, invalid email, out-of-range age, invalid plan domain value, and schema drift.
+All three reports were observed in the S3 `reports/` prefix. The three duration observations average **9300 ms**.
 
-CloudWatch datapoints from the fresh run:
+These runs provide stronger evidence than the earlier single-run checkpoint because the same workload was exercised repeatedly after deployment. The benchmark is still intentionally small and should not be presented as a production SLA or statistically significant load test.
 
-| Metric | Dimension | Observed value |
-|---|---|---:|
-| `DatasetsProcessed` | none | `1` |
-| `DatasetsFailed` | none | `1` |
-| `ProcessingDurationMs` | `Dataset=customers-e2e-final-v2` | `9281 ms` average |
+## Earlier AWS validation checkpoint
 
-The processed and failed counters landed in the 15:45 UTC minute bucket. The duration metric was observed in the corresponding five-minute bucket.
+An earlier fresh run of `customers-e2e-final-v2` recorded:
 
-## Observability design note
+- `DatasetsProcessed = 1`
+- `DatasetsFailed = 1`
+- `ProcessingDurationMs = 9281 ms` average
 
-Dataset processing counters are emitted from CloudWatch Logs metric filters. The Lambda emits the processing event as structured JSON content in the log message, and the deployed metric filters match that representation. Processing duration is emitted directly with `PutMetricData` and uses the dataset name as a dimension.
+The persisted report had status `failed`, score `35`, and five findings (four errors and one warning). This remains useful as evidence of the original data-quality and observability path.
 
-The previous duration metric-filter approach was intentionally removed because CloudWatch metric-filter transformations require a valid numeric extraction and cannot safely treat the logged duration expression as a dynamic metric value. Direct `PutMetricData` is the simpler and more reliable implementation for duration telemetry.
+## Observability design
+
+Dataset processing counters are emitted through CloudWatch Logs metric filters. The Lambda emits structured JSON content containing the processing event, and the deployed filters match that representation. Processing duration is emitted directly with `PutMetricData` using the dataset name as a dimension.
+
+The duration metric-filter approach was removed because direct `PutMetricData` gives the application explicit control over the numeric telemetry and avoids treating a dynamic duration value as a metric-filter transformation expression.
+
+## Resilience validation
+
+Phase 6.4 introduced explicit failure boundaries: transient Bedrock failures use bounded retries, malformed recommendation output gets one repair attempt, Lambda surfaces record failures as invocation errors, asynchronous retries are capped, and exhausted events have an SQS failure destination.
+
+The benchmark runs above demonstrate successful processing after that deployment. Failure-path behavior is additionally covered by static Lambda and deployment-contract tests in CI; no destructive remediation is enabled.
 
 ## Validation outcome
 
-**PASS.** The deployed AWS workflow was exercised with a fresh faulty dataset and produced both the expected reliability report and live operational metrics. This checkpoint is the evidence baseline for subsequent portfolio work.
+**PASS.** The deployed AWS workflow has been exercised repeatedly with a representative faulty dataset. Reports are persisted, CloudWatch duration telemetry is recorded, and the platform has explicit bounded failure/retry behavior.
 
 ## Reproduction outline
 
 1. Build and validate the SAM template.
 2. Deploy with `sam deploy`.
-3. Upload an evaluation dataset to the bucket's `input/` prefix.
+3. Upload an evaluation dataset to the bucket's `input/` prefix using a unique key.
 4. Wait for the EventBridge-triggered Lambda execution.
-5. Confirm the report appears under `reports/`.
+5. Confirm the corresponding report appears under `reports/`.
 6. Query the CloudWatch metrics for the execution window.
+7. Repeat with additional representative datasets for a stronger performance sample.
 
 Live validation is deliberately separate from normal CI because it invokes AWS services and Amazon Bedrock and therefore introduces credentials, latency, cost, and model variance.
