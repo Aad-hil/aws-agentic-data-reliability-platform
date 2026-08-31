@@ -17,7 +17,6 @@ from src.reliability.report import build_reliability_summary
 logger = logging.getLogger(__name__)
 logger.setLevel(os.getenv("LOG_LEVEL", "INFO"))
 s3 = boto3.client("s3")
-cloudwatch = boto3.client("cloudwatch")
 REPORT_PREFIX = os.getenv("REPORT_PREFIX", "reports/")
 BEDROCK_MODEL_ID = os.getenv("BEDROCK_MODEL_ID", "")
 METRIC_NAMESPACE = "AgenticDataReliability"
@@ -26,6 +25,7 @@ def _log(event: str, **fields: Any) -> None:
     logger.info(json.dumps({"event": event, "timestamp": datetime.now(timezone.utc).isoformat(), **fields}, default=str))
 
 def _publish_processing_metric(dataset_name: str, duration_ms: int) -> None:
+    cloudwatch = boto3.client("cloudwatch", region_name=os.getenv("AWS_REGION", "us-east-1"))
     cloudwatch.put_metric_data(
         Namespace=METRIC_NAMESPACE,
         MetricData=[
