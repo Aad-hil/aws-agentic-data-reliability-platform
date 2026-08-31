@@ -47,6 +47,7 @@ The deterministic engine establishes the evidence. Specialized agents interpret 
 - Phase 4 — AWS runtime and E2E validation: complete
 - Phase 5 — Agent evaluation and observability hardening: complete
 - Phase 6.1 — Cost and latency evidence baseline: complete
+- Phase 6.3 — Security and IAM review: complete
 
 ### Live AWS validation checkpoint
 
@@ -70,13 +71,29 @@ The next useful benchmark is a repeated run across representative clean and faul
 
 See [Performance and cost evidence](docs/performance.md) for the measurement and interpretation.
 
+## Security posture
+
+Phase 6.3 hardened and documented the AWS boundary:
+
+- S3 AES-256 server-side encryption with Bucket Key
+- S3 versioning for recovery
+- All four S3 Public Access Block controls enabled
+- Explicit S3 deny for non-TLS requests
+- Lambda S3 permissions scoped to the project bucket
+- CloudWatch metric writes limited to `PutMetricData` in the project namespace
+- Bedrock limited to inference actions (`InvokeModel` and `Converse`)
+- No credentials or `.env` files committed
+- Destructive remediation remains disabled
+
+The Bedrock resource is currently `*` as a documented portability trade-off for configurable inference profiles/models; the action set remains restricted. See [Security and IAM review](docs/security-iam-review.md) for the finding and future hardening path.
+
 ## Repository layout
 
 ```text
 .github/                 CI, templates, CODEOWNERS, Dependabot
 data/sample/             deterministic sample dataset
 data/evaluation/         representative reliability evaluation cases
-docs/                    architecture, evaluation, execution, E2E, performance and project plan
+docs/                    architecture, evaluation, execution, E2E, performance, security and project plan
 infra/                   AWS SAM infrastructure
 src/agents/              Bedrock adapter and specialized agents
 src/reliability/         deterministic reliability engine
@@ -120,6 +137,7 @@ See:
 - [Agent evaluation](docs/agent-evaluation.md)
 - [E2E validation](docs/e2e-validation.md)
 - [Performance and cost evidence](docs/performance.md)
+- [Security and IAM review](docs/security-iam-review.md)
 - [Project plan](docs/project-plan.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security](SECURITY.md)
