@@ -28,9 +28,34 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
+              BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
       NotificationConfiguration:
         EventBridgeConfiguration:
           EventBridgeEnabled: true
+  ReliabilityBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ReliabilityBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !GetAtt ReliabilityBucket.Arn
+              - !Sub ${ReliabilityBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: false
   ReliabilityFunction:
     Type: AWS::Serverless::Function
     Properties:
