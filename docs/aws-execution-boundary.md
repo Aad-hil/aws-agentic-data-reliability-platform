@@ -27,6 +27,18 @@ The Lambda is the orchestration boundary. Deterministic checks establish the fac
 - The Lambda uses IAM permissions scoped to the deployed resources.
 - CloudWatch provides logs, operational counters, and processing-duration telemetry.
 
+## Failure and retry boundary
+
+The runtime uses separate retry layers for different failure classes:
+
+1. The Bedrock adapter retries known transient service failures with bounded exponential backoff and jitter.
+2. The recommendation agent performs one repair attempt for malformed or schema-invalid model output.
+3. The Lambda handler raises when an input record fails, so asynchronous Lambda processing does not silently acknowledge failed work.
+4. `EventInvokeConfig` limits Lambda asynchronous retries to two attempts and one hour of event age.
+5. After retries are exhausted, SAM's SQS failure destination captures the failed event for operational investigation or controlled reprocessing.
+
+This prevents both silent event loss and unbounded retry storms.
+
 ## Observability
 
 The deployed stack exposes:
@@ -34,6 +46,7 @@ The deployed stack exposes:
 - `DatasetsProcessed` — CloudWatch Logs metric filter
 - `DatasetsFailed` — CloudWatch Logs metric filter
 - `ProcessingDurationMs` — direct `PutMetricData` publication with a `Dataset` dimension
+- Native Lambda `Invocations` and `Errors` metrics for runtime health
 
 The duration metric is deliberately published directly rather than extracted through a metric-filter transformation. This avoids treating a dynamic log value as a metric transformation expression and gives the application explicit control over the numeric telemetry.
 
@@ -49,6 +62,6 @@ See [E2E validation](e2e-validation.md) for the complete evidence checkpoint.
 
 ## Deployment
 
-The infrastructure is defined in `infra/template.yaml` using AWS SAM. Deploying the template creates the bucket, EventBridge rule, Lambda, IAM role, CloudWatch log group, metric filters, and dashboard.
+The infrastructure is defined in `infra/template.yaml` using AWS SAM. Deploying the template creates the bucket, EventBridge rule, Lambda, IAM role, CloudWatch log group, metric filters, dashboard, and Lambda failure destination.
 
 No AWS credentials, bucket names, or secrets are committed to the repository.

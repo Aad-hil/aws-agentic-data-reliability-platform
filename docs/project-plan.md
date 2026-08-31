@@ -48,12 +48,14 @@
 - [x] 6.1 Cost and latency evidence baseline
 - [ ] 6.2 Repeated performance benchmark across representative datasets
 - [x] 6.3 Security and IAM review
-- [ ] 6.4 Failure/retry and operational resilience review
+- [x] 6.4 Failure/retry and operational resilience review
 - [ ] 6.5 Final portfolio walkthrough and architecture evidence
 
 **Phase 6.1 checkpoint:** a fresh AWS E2E execution of `customers-e2e-final-v2` recorded `ProcessingDurationMs=9281 ms` average for a three-row intentionally faulty dataset. The same execution emitted `DatasetsProcessed=1` and `DatasetsFailed=1`. No single-run dollar estimate is claimed; Bedrock usage and account pricing should be measured over a representative benchmark before cost conclusions are drawn.
 
 **Phase 6.3 checkpoint:** completed a security/IAM review and hardened the S3 boundary with AES-256 encryption + Bucket Key, versioning, all four S3 Public Access Block controls, and an explicit deny for non-TLS S3 requests. Lambda permissions remain service/action scoped; CloudWatch metric writes are restricted to the project namespace. Bedrock inference remains the only documented IAM limitation because the configurable inference-profile/model resource is currently represented as `*` for deployment portability. Static contract tests cover the security controls.
+
+**Phase 6.4 checkpoint:** completed the failure/retry and operational resilience review. Bedrock transient failures retain bounded exponential-backoff retries; malformed model output gets one repair attempt; Lambda now surfaces record failures as invocation errors instead of silently acknowledging them; asynchronous Lambda retries are capped at two attempts within one hour and exhausted events are routed to an automatically provisioned SQS failure destination. The remaining production hardening item is durable idempotency for multi-record/replayed events.
 
 ## Scope guardrails
 

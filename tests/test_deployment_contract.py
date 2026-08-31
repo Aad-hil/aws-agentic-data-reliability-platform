@@ -65,6 +65,13 @@ def test_s3_bucket_denies_insecure_transport():
     assert statement["Condition"] == {"Bool": {"aws:SecureTransport": False}}
 
 
+def test_lambda_uses_bounded_async_retries_and_failure_destination():
+    config = load_template()["Resources"]["ReliabilityFunction"]["Properties"]["EventInvokeConfig"]
+    assert config["MaximumEventAgeInSeconds"] == 3600
+    assert config["MaximumRetryAttempts"] == 2
+    assert config["DestinationConfig"]["OnFailure"] == {"Type": "SQS"}
+
+
 def test_lambda_uses_structured_cloudwatch_logging():
     template = load_template()
     logging_config = template["Resources"]["ReliabilityFunction"]["Properties"]["LoggingConfig"]

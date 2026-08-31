@@ -48,6 +48,7 @@ The deterministic engine establishes the evidence. Specialized agents interpret 
 - Phase 5 — Agent evaluation and observability hardening: complete
 - Phase 6.1 — Cost and latency evidence baseline: complete
 - Phase 6.3 — Security and IAM review: complete
+- Phase 6.4 — Failure/retry and operational resilience review: complete
 
 ### Live AWS validation checkpoint
 
@@ -87,13 +88,28 @@ Phase 6.3 hardened and documented the AWS boundary:
 
 The Bedrock resource is currently `*` as a documented portability trade-off for configurable inference profiles/models; the action set remains restricted. See [Security and IAM review](docs/security-iam-review.md) for the finding and future hardening path.
 
+## Resilience posture
+
+Phase 6.4 adds explicit failure boundaries rather than silently acknowledging failed work:
+
+- Bedrock retries transient throttling/service failures with bounded exponential backoff and jitter.
+- Recommendation output gets one repair attempt when the model returns malformed or schema-invalid JSON.
+- Lambda raises an invocation-level error when any input record fails, allowing the asynchronous runtime to retry it.
+- Lambda retries are capped at **2 attempts within 1 hour**.
+- Exhausted failures are routed to an automatically provisioned **SQS failure destination** for investigation/reprocessing.
+- Invalid non-input objects are skipped without entering a retry loop.
+
+The remaining production hardening item is durable idempotency for multi-record/replayed events. The current report key is deterministic, so repeated processing does not create unbounded report objects.
+
+See [Failure, retry, and resilience review](docs/resilience-review.md) for the detailed boundary analysis.
+
 ## Repository layout
 
 ```text
 .github/                 CI, templates, CODEOWNERS, Dependabot
 data/sample/             deterministic sample dataset
 data/evaluation/         representative reliability evaluation cases
-docs/                    architecture, evaluation, execution, E2E, performance, security and project plan
+docs/                    architecture, evaluation, execution, E2E, performance, security, resilience and project plan
 infra/                   AWS SAM infrastructure
 src/agents/              Bedrock adapter and specialized agents
 src/reliability/         deterministic reliability engine
@@ -138,6 +154,7 @@ See:
 - [E2E validation](docs/e2e-validation.md)
 - [Performance and cost evidence](docs/performance.md)
 - [Security and IAM review](docs/security-iam-review.md)
+- [Failure, retry, and resilience review](docs/resilience-review.md)
 - [Project plan](docs/project-plan.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security](SECURITY.md)

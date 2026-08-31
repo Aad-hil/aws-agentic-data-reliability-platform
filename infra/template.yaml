@@ -78,6 +78,12 @@ Resources:
               Condition:
                 StringEquals:
                   cloudwatch:namespace: AgenticDataReliability
+      EventInvokeConfig:
+        MaximumEventAgeInSeconds: 3600
+        MaximumRetryAttempts: 2
+        DestinationConfig:
+          OnFailure:
+            Type: SQS
       Events:
         InputUpload:
           Type: EventBridgeRule
