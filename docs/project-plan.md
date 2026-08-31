@@ -31,14 +31,18 @@
 - [x] 4.5 Deployment validation and runbook
 - [x] Phase 4 E2E validation: S3 → EventBridge → Lambda → Bedrock → Detection → RCA → Recommendation → S3 report
 
-**Phase 4 checkpoint:** completed against the deployed `agentic-data-reliability` stack in `us-east-1`. The controlled E2E run processed one dataset with zero Lambda invocation failures and produced a persisted reliability report.
+**Phase 4 checkpoint:** completed against the deployed `agentic-data-reliability` stack in `us-east-1`. The controlled E2E run processed a faulty dataset and produced a persisted reliability report.
 
 ### Phase 5 — Evaluation and portfolio hardening
-- [ ] Representative reliability cases
-- [ ] Agent output regression/evaluation suite
-- [ ] Cost and latency measurements
-- [ ] Architecture and execution evidence
-- [ ] Deployment/troubleshooting guide
+- [x] Representative reliability cases
+- [x] Agent output regression/evaluation suite
+- [x] Live Bedrock evaluation harness
+- [x] CloudWatch observability dashboard and operational metrics
+- [x] Deployment and troubleshooting validation
+- [x] Fresh AWS E2E validation with live metric datapoints
+- [x] Portfolio documentation and evidence checkpoint
+
+**Phase 5 checkpoint:** completed on the deployed `agentic-data-reliability` stack in `us-east-1`. A fresh intentionally faulty dataset produced `DatasetsProcessed=1`, `DatasetsFailed=1`, and `ProcessingDurationMs=9281 ms`. The persisted report had status `failed`, score `35`, and five findings (four errors and one warning).
 
 ## Scope guardrails
 
