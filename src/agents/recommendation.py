@@ -34,12 +34,17 @@ Use ONLY the supplied incident and RCA evidence. Recommendations must remain adv
             },
             default=str,
         )
-        payload = self.client.invoke_json(
-            system_prompt=self.SYSTEM_PROMPT,
-            user_prompt=user_prompt,
-        )
 
-        missing = RecommendationAgent._missing_fields(payload)
+        try:
+            payload = self.client.invoke_json(
+                system_prompt=self.SYSTEM_PROMPT,
+                user_prompt=user_prompt,
+            )
+            missing = RecommendationAgent._missing_fields(payload)
+        except ValueError:
+            payload = None
+            missing = ["valid JSON"]
+
         if missing:
             payload = self.client.invoke_json(
                 system_prompt=self.SYSTEM_PROMPT,
