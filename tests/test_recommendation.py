@@ -17,9 +17,10 @@ class FakeClient:
 
     def invoke_json(self, **kwargs):
         self.calls += 1
-        if isinstance(self.payload, list):
-            return self.payload[self.calls - 1]
-        return self.payload
+        value = self.payload[self.calls - 1] if isinstance(self.payload, list) else self.payload
+        if isinstance(value, Exception):
+            raise value
+        return value
 
 
 def request():
@@ -61,6 +62,21 @@ def test_recommendation_is_advisory() -> None:
 def test_recommendation_retries_missing_schema_fields() -> None:
     client = FakeClient([
         {"recommendation": "Quarantine duplicates"},
+        {
+            "action": "Quarantine duplicate records for review",
+            "rationale": "Prevents downstream propagation.",
+            "risk": "Requires manual review.",
+            "evidence": ["duplicate_count=2"],
+        },
+    ])
+    result = RecommendationAgent(client).run(request())
+    assert result.action == "Quarantine duplicate records for review"
+    assert client.calls == 2
+
+
+def test_recommendation_retries_malformed_json() -> None:
+    client = FakeClient([
+        ValueError("Bedrock returned invalid JSON"),
         {
             "action": "Quarantine duplicate records for review",
             "rationale": "Prevents downstream propagation.",
