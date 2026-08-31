@@ -13,8 +13,12 @@ from src.agents.recommendation import RecommendationAgent
 class FakeClient:
     def __init__(self, payload):
         self.payload = payload
+        self.calls = 0
 
     def invoke_json(self, **kwargs):
+        self.calls += 1
+        if isinstance(self.payload, list):
+            return self.payload[self.calls - 1]
         return self.payload
 
 
@@ -52,6 +56,21 @@ def test_recommendation_is_advisory() -> None:
     assert result.incident_id == "INC-001"
     assert result.automatic_mutation_allowed is False
     assert result.evidence == ("duplicate_count=2",)
+
+
+def test_recommendation_retries_missing_schema_fields() -> None:
+    client = FakeClient([
+        {"recommendation": "Quarantine duplicates"},
+        {
+            "action": "Quarantine duplicate records for review",
+            "rationale": "Prevents downstream propagation.",
+            "risk": "Requires manual review.",
+            "evidence": ["duplicate_count=2"],
+        },
+    ])
+    result = RecommendationAgent(client).run(request())
+    assert result.action == "Quarantine duplicate records for review"
+    assert client.calls == 2
 
 
 def test_recommendation_requires_evidence() -> None:
