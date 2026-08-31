@@ -1,12 +1,10 @@
 # Performance and Cost Evidence
 
-## Phase 6.1 — Cost and latency evidence
+## Phase 6.1 / 6.2 — Cost and latency evidence
 
-This checkpoint records measurements from a real AWS execution of the deployed platform. The goal is to establish an evidence baseline before making performance or cost optimizations.
+This checkpoint records measured behavior from repeated AWS executions of the deployed platform. The goal is to establish a realistic latency baseline without inventing a production SLA or single-run cost estimate.
 
-## Live measurement
-
-Environment:
+## Environment
 
 - Stack: `agentic-data-reliability`
 - Region: `us-east-1`
@@ -14,36 +12,46 @@ Environment:
 - Lambda memory: 512 MB
 - Lambda timeout: 60 seconds
 - Model: `us.amazon.nova-2-lite-v1:0`
-- Dataset: `customers-e2e-final-v2`
+- Dataset: `data/evaluation/mixed_issues.csv`
 - Dataset size: 3 rows
 
-Observed CloudWatch metric:
+## Repeated benchmark
 
-| Metric | Dimension | Observed value |
-|---|---|---:|
-| `ProcessingDurationMs` | `Dataset=customers-e2e-final-v2` | `9281 ms` average |
-| `DatasetsProcessed` | none | `1` |
-| `DatasetsFailed` | none | `1` |
+Three fresh uploads of the same representative mixed-issue dataset were executed after the final resilience changes.
 
-The duration metric represents the Lambda-side end-to-end processing interval for the dataset, including deterministic analysis, agent orchestration, report persistence, and metric publication.
+| Run | Input object | Report | `ProcessingDurationMs` |
+|---|---|---|---:|
+| 1 | `benchmark-run-1c.csv` | `benchmark-run-1c.json` | 9055 ms |
+| 2 | `benchmark-run-2.csv` | `benchmark-run-2.json` | 10779 ms |
+| 3 | `benchmark-run-3.csv` | `benchmark-run-3.json` | 8067 ms |
+
+Observed range: **8067–10779 ms**.
+
+Mean latency across the three observed runs: **9300 ms (9.3 s)**.
+
+The measurements are CloudWatch `ProcessingDurationMs` averages for each dataset dimension and represent the Lambda-side end-to-end processing interval, including deterministic analysis, agent orchestration, Bedrock inference, report persistence, and metric publication.
+
+## Interpretation
+
+The repeated benchmark is more useful than the earlier single-run baseline because it shows normal run-to-run variance. The observed spread is approximately 2.7 seconds, so the platform should not claim a fixed latency guarantee from this small sample.
+
+The workflow remains intentionally simple. The evidence does not yet justify architectural optimization. For a production workload, the next benchmark would increase sample count and dataset size and capture Bedrock token usage alongside Lambda duration.
+
+## Outcome metrics
+
+The benchmark also confirmed that CloudWatch outcome telemetry is operational. The earlier fresh E2E validation recorded `DatasetsProcessed=1` and `DatasetsFailed=1` for an intentionally faulty dataset, and the final benchmark runs produced persisted reports in S3.
+
+A failed reliability report is not equivalent to a failed platform execution: the dataset can be successfully processed while the deterministic reliability assessment correctly reports data-quality failures. Operational success/failure should therefore be interpreted using both the report status and Lambda/application telemetry.
 
 ## Cost accounting
 
-This project intentionally does **not** hard-code a dollar amount from a single run. Actual cost depends on the AWS account's pricing, model token usage, request volume, Lambda memory duration, and other account-level factors.
+This project intentionally does **not** hard-code a dollar amount from these runs. Actual cost depends on account pricing, Bedrock token usage, request volume, Lambda memory duration, and other account-level factors.
 
-The platform already exposes the main runtime measurement needed for ongoing analysis: processing duration. Lambda configuration is also explicit in `infra/template.yaml`, making the compute-cost assumptions reviewable.
-
-For Bedrock, token-level usage should be captured from AWS billing/usage data when a larger benchmark is performed. A single three-row E2E run is useful as a latency proof but is not statistically meaningful as a production cost estimate.
-
-## Engineering interpretation
-
-The current result is a **baseline, not an optimization target**. At roughly 9.3 seconds for a deliberately small dataset, the dominant latency is expected to be the model-backed workflow rather than CSV parsing or deterministic checks. The next useful benchmark should run multiple representative datasets and compare latency and model usage across clean, missing-value, invalid-value, and mixed-issue cases.
-
-No architectural optimization is justified from one observation. Keeping the workflow simple is preferred until repeated measurements demonstrate a bottleneck.
+The current benchmark establishes latency evidence only. A meaningful cost baseline should use AWS billing/usage data and a larger representative workload rather than extrapolating from three small model-backed executions.
 
 ## Reproduction
 
-After a fresh E2E execution, query the duration metric with the dataset dimension:
+After each fresh E2E execution, query the duration metric with the dataset dimension:
 
 ```bash
 aws cloudwatch get-metric-statistics \
@@ -61,4 +69,4 @@ The corresponding processed/failed counters can be queried from the `DatasetsPro
 
 ## Portfolio takeaway
 
-The project now demonstrates measured AWS runtime behavior rather than only theoretical architecture: a live dataset was processed in approximately 9.3 seconds, the resulting reliability report was persisted, and CloudWatch recorded the processing and outcome metrics.
+**PASS.** The platform now has repeated live AWS latency evidence rather than a single observation. Three representative executions completed in 8.1–10.8 seconds, with a mean of approximately 9.3 seconds. The result is presented as an evidence baseline, not a production SLA or fabricated cost estimate.
