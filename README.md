@@ -10,6 +10,9 @@
 S3 input/*.csv
       | ObjectCreated
       v
+Amazon EventBridge
+      |
+      v
 AWS Lambda
       |
       v
@@ -28,6 +31,9 @@ Amazon Bedrock
       |
       v
 S3 reports/*.json
+      |
+      v
+CloudWatch Logs + Metrics
 ```
 
 The deterministic engine establishes the evidence. Specialized agents interpret that evidence. Recommendations remain advisory and automatic destructive mutation is disabled.
@@ -38,20 +44,35 @@ The deterministic engine establishes the evidence. Specialized agents interpret 
 - Phase 1 — Data foundation: complete
 - Phase 2 — Deterministic reliability engine: complete
 - Phase 3 — Multi-agent reasoning + local E2E: complete
-- Phase 4.1 — S3 + Lambda boundary: complete
-- Phase 4.2 — Lambda + Bedrock workflow: open in PR #14
+- Phase 4 — AWS runtime and E2E validation: complete
+- Phase 5 — Agent evaluation and observability hardening: complete
+
+### Live AWS validation checkpoint
+
+The deployed `agentic-data-reliability` stack in `us-east-1` was validated with a fresh intentionally faulty dataset. The run successfully traversed S3 → EventBridge → Lambda → Bedrock workflow → reliability report → CloudWatch observability.
+
+Observed CloudWatch datapoints from the fresh E2E run:
+
+| Metric | Observed value |
+|---|---:|
+| `DatasetsProcessed` | `1` |
+| `DatasetsFailed` | `1` |
+| `ProcessingDurationMs` | `9281 ms` |
+
+The reliability report for the test dataset was persisted to S3 with status `failed`, score `35`, and five findings (four errors and one warning). This validates both the data-quality path and the operational telemetry path.
 
 ## Repository layout
 
 ```text
 .github/                 CI, templates, CODEOWNERS, Dependabot
 data/sample/             deterministic sample dataset
-docs/                    architecture and project plan
+data/evaluation/         representative reliability evaluation cases
+docs/                    architecture, evaluation, execution and project plan
 infra/                   AWS SAM infrastructure
 src/agents/              Bedrock adapter and specialized agents
 src/reliability/         deterministic reliability engine
 src/lambda_handler.py    S3-triggered Lambda entry point
-tests/                   unit and integration tests
+tests/                   unit, contract and evaluation tests
 ```
 
 ## Local development
@@ -62,18 +83,33 @@ Python 3.12+ is the supported baseline.
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+pip install -r requirements-dev.txt
 python -m pytest -q
 ```
 
 Tests use fakes for AWS/Bedrock boundaries, so the unit suite does not require AWS credentials.
 
-## AWS direction
+## AWS deployment
 
-AWS SAM is defined in `infra/template.yaml`. The target runtime is S3 ObjectCreated -> Lambda -> deterministic reliability analysis -> Bedrock agents -> S3 report.
+AWS SAM is defined in `infra/template.yaml`. The deployed target is:
+
+```text
+S3 input/*.csv
+  -> EventBridge ObjectCreated
+  -> Lambda
+  -> deterministic reliability analysis
+  -> Bedrock agents
+  -> S3 reports/*.json
+  -> CloudWatch logs/metrics
+```
+
+The stack is designed around least-privilege permissions and keeps automatic destructive remediation disabled.
 
 See:
 - [Architecture](docs/architecture.md)
 - [AWS execution boundary](docs/aws-execution-boundary.md)
+- [Agent evaluation](docs/agent-evaluation.md)
+- [E2E validation](docs/e2e-validation.md)
 - [Project plan](docs/project-plan.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security](SECURITY.md)
