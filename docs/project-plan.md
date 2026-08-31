@@ -29,9 +29,9 @@
 - [x] 4.3 Error handling, retry boundaries, and structured logging
 - [x] 4.4 CloudWatch observability and operational metrics
 - [x] 4.5 Deployment validation and runbook
-- [x] Phase 4 E2E validation: S3 → EventBridge → Lambda → Bedrock → Detection → RCA → Recommendation → S3 report
+- [x] Phase 4 E2E validation: S3 → EventBridge → Lambda → Detection → RCA → Recommendation → Bedrock → S3 report
 
-**Phase 4 checkpoint:** completed against the deployed `agentic-data-reliability` stack in `us-east-1`. The controlled E2E run processed a faulty dataset and produced a persisted reliability report.
+**Phase 4 checkpoint:** completed against the deployed `agentic-data-reliability` stack in `us-east-1`. A controlled E2E run processed a faulty dataset and produced a persisted reliability report.
 
 ### Phase 5 — Evaluation and portfolio hardening
 - [x] Representative reliability cases
@@ -43,6 +43,15 @@
 - [x] Portfolio documentation and evidence checkpoint
 
 **Phase 5 checkpoint:** completed on the deployed `agentic-data-reliability` stack in `us-east-1`. A fresh intentionally faulty dataset produced `DatasetsProcessed=1`, `DatasetsFailed=1`, and `ProcessingDurationMs=9281 ms`. The persisted report had status `failed`, score `35`, and five findings (four errors and one warning).
+
+### Phase 6 — Portfolio performance and production-readiness
+- [x] 6.1 Cost and latency evidence baseline
+- [ ] 6.2 Repeated performance benchmark across representative datasets
+- [ ] 6.3 Security and IAM review
+- [ ] 6.4 Failure/retry and operational resilience review
+- [ ] 6.5 Final portfolio walkthrough and architecture evidence
+
+**Phase 6.1 checkpoint:** a fresh AWS E2E execution of `customers-e2e-final-v2` recorded `ProcessingDurationMs=9281 ms` average for a three-row intentionally faulty dataset. The same execution emitted `DatasetsProcessed=1` and `DatasetsFailed=1`. No single-run dollar estimate is claimed; Bedrock usage and account pricing should be measured over a representative benchmark before cost conclusions are drawn.
 
 ## Scope guardrails
 
