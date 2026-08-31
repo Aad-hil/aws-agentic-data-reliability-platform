@@ -105,4 +105,6 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             failures.append({"input_key": key, "error": exc.__class__.__name__})
 
     _log("invocation_completed", request_id=request_id, processed=len(processed), failures=len(failures))
+    if failures:
+        raise RuntimeError(f"Dataset processing failed for {len(failures)} record(s)")
     return {"processed": processed, "failures": failures}
