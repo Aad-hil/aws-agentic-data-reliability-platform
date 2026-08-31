@@ -35,11 +35,34 @@ def test_sam_template_has_expected_runtime_and_resources():
     assert template["Transform"] == "AWS::Serverless-2016-10-31"
     resources = template["Resources"]
     assert "ReliabilityBucket" in resources
+    assert "ReliabilityBucketPolicy" in resources
     assert "ReliabilityFunction" in resources
     assert "ReliabilityLogGroup" in resources
     assert "ProcessedMetricFilter" in resources
     assert "FailedMetricFilter" in resources
     assert "Dashboard" in resources
+
+
+def test_s3_bucket_has_encryption_versioning_and_public_access_block():
+    bucket = load_template()["Resources"]["ReliabilityBucket"]["Properties"]
+    encryption = bucket["BucketEncryption"]["ServerSideEncryptionConfiguration"][0]["ServerSideEncryptionByDefault"]
+    assert encryption["SSEAlgorithm"] == "AES256"
+    assert encryption["BucketKeyEnabled"] is True
+    assert bucket["VersioningConfiguration"] == {"Status": "Enabled"}
+    assert bucket["PublicAccessBlockConfiguration"] == {
+        "BlockPublicAcls": True,
+        "BlockPublicPolicy": True,
+        "IgnorePublicAcls": True,
+        "RestrictPublicBuckets": True,
+    }
+
+
+def test_s3_bucket_denies_insecure_transport():
+    policy = load_template()["Resources"]["ReliabilityBucketPolicy"]["Properties"]["PolicyDocument"]
+    statement = policy["Statement"][0]
+    assert statement["Effect"] == "Deny"
+    assert statement["Action"] == "s3:*"
+    assert statement["Condition"] == {"Bool": {"aws:SecureTransport": False}}
 
 
 def test_lambda_uses_structured_cloudwatch_logging():
