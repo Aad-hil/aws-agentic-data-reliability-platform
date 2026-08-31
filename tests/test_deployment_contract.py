@@ -37,6 +37,8 @@ def test_sam_template_has_expected_runtime_and_resources():
     assert "ReliabilityBucket" in resources
     assert "ReliabilityFunction" in resources
     assert "ReliabilityLogGroup" in resources
+    assert "ProcessedMetricFilter" in resources
+    assert "FailedMetricFilter" in resources
     assert "Dashboard" in resources
 
 
@@ -50,12 +52,19 @@ def test_lambda_uses_structured_cloudwatch_logging():
     }
 
 
-def test_lambda_has_bedrock_invoke_permission():
+def test_lambda_has_bedrock_and_cloudwatch_permissions():
     template = load_template()
-    statements = template["Resources"]["ReliabilityFunction"]["Properties"]["Policies"][2]["Statement"]
-    actions = statements[0]["Action"]
-    assert "bedrock:InvokeModel" in actions
-    assert "bedrock:Converse" in actions
+    policies = template["Resources"]["ReliabilityFunction"]["Properties"]["Policies"]
+    bedrock_statements = policies[2]["Statement"]
+    bedrock_actions = bedrock_statements[0]["Action"]
+    assert "bedrock:InvokeModel" in bedrock_actions
+    assert "bedrock:Converse" in bedrock_actions
+
+    cloudwatch_statements = policies[3]["Statement"]
+    assert cloudwatch_statements[0]["Action"] == ["cloudwatch:PutMetricData"]
+    assert cloudwatch_statements[0]["Condition"] == {
+        "StringEquals": {"cloudwatch:namespace": "AgenticDataReliability"}
+    }
 
 
 def test_s3_eventbridge_trigger_targets_input_prefix():
@@ -72,7 +81,7 @@ def test_s3_eventbridge_trigger_targets_input_prefix():
     assert pattern["detail"]["object"]["key"] == [{"prefix": "input/"}]
 
 
-def test_observability_metric_filters_cover_processed_failed_and_duration():
+def test_observability_metrics_cover_processed_failed_and_duration():
     resources = load_template()["Resources"]
 
     processed = resources["ProcessedMetricFilter"]
@@ -83,9 +92,12 @@ def test_observability_metric_filters_cover_processed_failed_and_duration():
     assert failed["Properties"]["FilterPattern"] == '{ $.event = "dataset_processed" && $.status = "failed" }'
     assert failed["Properties"]["MetricTransformations"][0]["MetricName"] == "DatasetsFailed"
 
-    duration = resources["DurationMetricFilter"]
-    assert duration["Properties"]["FilterPattern"] == '{ $.event = "dataset_processed" && $.duration_ms = * }'
-    assert duration["Properties"]["MetricTransformations"][0]["MetricName"] == "ProcessingDurationMs"
+    assert "DurationMetricFilter" not in resources
+
+    dashboard = resources["Dashboard"]["Properties"]["DashboardBody"]
+    assert "DatasetsProcessed" in dashboard
+    assert "DatasetsFailed" in dashboard
+    assert "ProcessingDurationMs" in dashboard
 
 
 def test_example_parameters_contain_no_real_account_values():

@@ -45,6 +45,14 @@ Resources:
                 - bedrock:InvokeModel
                 - bedrock:Converse
               Resource: "*"
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cloudwatch:PutMetricData
+              Resource: "*"
+              Condition:
+                StringEquals:
+                  cloudwatch:namespace: AgenticDataReliability
       Events:
         InputUpload:
           Type: EventBridgeRule
@@ -94,16 +102,6 @@ Resources:
         - MetricNamespace: AgenticDataReliability
           MetricName: DatasetsFailed
           MetricValue: "1"
-          DefaultValue: 0
-  DurationMetricFilter:
-    Type: AWS::Logs::MetricFilter
-    Properties:
-      LogGroupName: !Ref ReliabilityLogGroup
-      FilterPattern: '{ $.event = "dataset_processed" && $.duration_ms = * }'
-      MetricTransformations:
-        - MetricNamespace: AgenticDataReliability
-          MetricName: ProcessingDurationMs
-          MetricValue: "$duration_ms"
           DefaultValue: 0
   Dashboard:
     Type: AWS::CloudWatch::Dashboard

@@ -8,6 +8,14 @@ class FakeS3:
     def __init__(self): self.objects = []
     def get_object(self, **kwargs): return {"Body": Body()}
     def put_object(self, **kwargs): self.objects.append(kwargs)
+class FakeCloudWatch:
+    def __init__(self): self.calls = []
+    def put_metric_data(self, **kwargs): self.calls.append(kwargs)
+class FakeBoto3:
+    def __init__(self, cloudwatch): self.cloudwatch = cloudwatch
+    def client(self, service_name, **kwargs):
+        assert service_name == "cloudwatch"
+        return self.cloudwatch
 class FakeOrchestrator:
     def run(self, **kwargs):
         from src.agents.contracts import Incident, Priority, RCAResult, Recommendation, RootCauseHypothesis
@@ -17,9 +25,11 @@ class FakeOrchestrator:
             "recommendation": Recommendation("INC-001", "Quarantine for review", "Limit propagation", "Manual review required", ("duplicate_count=1",)),
         })()
 
-def test_handler_processes_csv_and_returns_failures(monkeypatch):
+def test_handler_processes_csv_and_publishes_duration_metric(monkeypatch):
     fake = FakeS3()
+    fake_cloudwatch = FakeCloudWatch()
     monkeypatch.setattr(lambda_handler, "s3", fake)
+    monkeypatch.setattr(lambda_handler, "boto3", FakeBoto3(fake_cloudwatch))
     monkeypatch.setattr(lambda_handler, "build_orchestrator", lambda: FakeOrchestrator())
     result = lambda_handler.handler({"Records": [{"s3": {"bucket": {"name": "demo-bucket"}, "object": {"key": "input/customers.csv"}}}]}, None)
     assert result["processed"][0]["report_key"] == "reports/customers.json"
@@ -27,6 +37,12 @@ def test_handler_processes_csv_and_returns_failures(monkeypatch):
     payload = json.loads(fake.objects[0]["Body"])
     assert payload["incident"]["incident_id"] == "INC-001"
     assert payload["recommendation"]["automatic_mutation_allowed"] is False
+    assert len(fake_cloudwatch.calls) == 1
+    metric = fake_cloudwatch.calls[0]
+    assert metric["Namespace"] == "AgenticDataReliability"
+    assert metric["MetricData"][0]["MetricName"] == "ProcessingDurationMs"
+    assert metric["MetricData"][0]["Unit"] == "Milliseconds"
+    assert metric["MetricData"][0]["Value"] >= 0
 
 def test_handler_ignores_non_csv_and_report_keys(monkeypatch):
     fake = FakeS3()
