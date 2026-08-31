@@ -16,11 +16,11 @@ Amazon EventBridge
 AWS Lambda
       |
       v
-Reliability Engine
+Deterministic Reliability Engine
 (profile -> rules -> evaluate -> report)
       |
       v
-Orchestrator
+Multi-Agent Orchestrator
       |
       +--> Detection Agent
       +--> RCA Agent
@@ -46,6 +46,7 @@ The deterministic engine establishes the evidence. Specialized agents interpret 
 - Phase 3 — Multi-agent reasoning + local E2E: complete
 - Phase 4 — AWS runtime and E2E validation: complete
 - Phase 5 — Agent evaluation and observability hardening: complete
+- Phase 6.1 — Cost and latency evidence baseline: complete
 
 ### Live AWS validation checkpoint
 
@@ -61,13 +62,21 @@ Observed CloudWatch datapoints from the fresh E2E run:
 
 The reliability report for the test dataset was persisted to S3 with status `failed`, score `35`, and five findings (four errors and one warning). This validates both the data-quality path and the operational telemetry path.
 
+## Performance and cost baseline
+
+The fresh E2E execution completed in approximately **9.3 seconds** for a three-row dataset. This is a measured latency baseline, not a production SLA. The repository deliberately avoids claiming a fabricated single-run dollar cost; actual cost depends on Lambda duration/memory, Bedrock token usage, request volume, and account pricing.
+
+The next useful benchmark is a repeated run across representative clean and faulty datasets, capturing latency and model usage before making optimization decisions.
+
+See [Performance and cost evidence](docs/performance.md) for the measurement and interpretation.
+
 ## Repository layout
 
 ```text
 .github/                 CI, templates, CODEOWNERS, Dependabot
 data/sample/             deterministic sample dataset
 data/evaluation/         representative reliability evaluation cases
-docs/                    architecture, evaluation, execution and project plan
+docs/                    architecture, evaluation, execution, E2E, performance and project plan
 infra/                   AWS SAM infrastructure
 src/agents/              Bedrock adapter and specialized agents
 src/reliability/         deterministic reliability engine
@@ -110,6 +119,7 @@ See:
 - [AWS execution boundary](docs/aws-execution-boundary.md)
 - [Agent evaluation](docs/agent-evaluation.md)
 - [E2E validation](docs/e2e-validation.md)
+- [Performance and cost evidence](docs/performance.md)
 - [Project plan](docs/project-plan.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security](SECURITY.md)
@@ -122,6 +132,7 @@ See:
 - Least-privilege IAM
 - Human-reviewed remediation
 - AWS-independent tests
+- Measured before optimized
 - Small, explainable architecture
 
 ## License
