@@ -14,30 +14,48 @@ class RecommendationAgent:
 
     SYSTEM_PROMPT = """You are a data reliability remediation advisor.
 Use ONLY the supplied incident and RCA evidence.
-Return JSON with: action, rationale, risk, evidence.
+Return JSON with exactly these fields: action, rationale, risk, evidence.
 Recommendations must be advisory and must not instruct automatic destructive
 data mutation. Prefer reversible, reviewable actions."""
+
+    REPAIR_PROMPT = """Your previous response did not satisfy the required recommendation schema.
+Return ONLY a JSON object containing all four fields: action, rationale, risk, evidence.
+Do not add alternative field names, markdown, commentary, or prose outside the JSON object.
+Use ONLY the supplied incident and RCA evidence. Recommendations must remain advisory and reviewable."""
 
     def __init__(self, client: BedrockClient) -> None:
         self.client = client
 
     def run(self, request: RecommendationInput) -> Recommendation:
+        user_prompt = json.dumps(
+            {
+                "incident": request.incident,
+                "rca": request.rca,
+            },
+            default=str,
+        )
         payload = self.client.invoke_json(
             system_prompt=self.SYSTEM_PROMPT,
-            user_prompt=json.dumps(
-                {
-                    "incident": request.incident,
-                    "rca": request.rca,
-                },
-                default=str,
-            ),
+            user_prompt=user_prompt,
         )
+
+        missing = RecommendationAgent._missing_fields(payload)
+        if missing:
+            payload = self.client.invoke_json(
+                system_prompt=self.SYSTEM_PROMPT,
+                user_prompt=user_prompt + "\n\n" + self.REPAIR_PROMPT,
+            )
+
         return self._parse(payload, request)
 
     @staticmethod
-    def _parse(payload: dict[str, Any], request: RecommendationInput) -> Recommendation:
+    def _missing_fields(payload: dict[str, Any]) -> list[str]:
         required = ("action", "rationale", "risk", "evidence")
-        missing = [key for key in required if key not in payload]
+        return [key for key in required if key not in payload]
+
+    @staticmethod
+    def _parse(payload: dict[str, Any], request: RecommendationInput) -> Recommendation:
+        missing = RecommendationAgent._missing_fields(payload)
         if missing:
             raise ValueError(
                 f"Recommendation response missing fields: {', '.join(missing)}"
