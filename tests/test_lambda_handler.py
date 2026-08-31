@@ -1,5 +1,6 @@
 """Tests for Lambda production boundaries without AWS or Bedrock."""
 import json
+import pytest
 from src import lambda_handler
 
 class Body:
@@ -55,11 +56,10 @@ def test_handler_ignores_non_csv_and_report_keys(monkeypatch):
     assert result["processed"] == []
     assert result["failures"] == []
 
-def test_handler_isolates_record_failure(monkeypatch):
+def test_handler_surfaces_record_failure_for_async_retry(monkeypatch):
     fake = FakeS3()
     monkeypatch.setattr(lambda_handler, "s3", fake)
     monkeypatch.setattr(lambda_handler, "build_orchestrator", lambda: FakeOrchestrator())
     fake.get_object = lambda **kwargs: (_ for _ in ()).throw(RuntimeError("s3 unavailable"))
-    result = lambda_handler.handler({"Records": [{"s3": {"bucket": {"name": "demo-bucket"}, "object": {"key": "input/customers.csv"}}}]}, None)
-    assert result["processed"] == []
-    assert result["failures"][0]["error"] == "RuntimeError"
+    with pytest.raises(RuntimeError, match="Dataset processing failed for 1 record"):
+        lambda_handler.handler({"Records": [{"s3": {"bucket": {"name": "demo-bucket"}, "object": {"key": "input/customers.csv"}}}]}, None)
