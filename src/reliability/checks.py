@@ -10,6 +10,9 @@ from .models import CheckType, ReliabilityFinding, Severity
 
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 ALLOWED_PLANS = {"basic", "pro", "enterprise"}
+ALLOWED_ORDER_PAYMENT_METHODS = {"card", "paypal", "bank_transfer", "cod"}
+ALLOWED_ORDER_CHANNELS = {"web", "mobile", "store", "partner"}
+ALLOWED_ORDER_STATUSES = {"pending", "paid", "shipped", "delivered", "cancelled", "refunded"}
 
 
 def check_completeness(rows: Iterable[Mapping[str, Any]], required_columns: Iterable[str]) -> list[ReliabilityFinding]:
@@ -58,19 +61,63 @@ def check_validity(rows: Iterable[Mapping[str, Any]]) -> list[ReliabilityFinding
     if invalid_ages:
         findings.append(ReliabilityFinding(
             check=CheckType.VALIDITY, severity=Severity.ERROR, column="age",
-            description=f"{len(invalid_ages)} age value(s) fall outside the allowed range 0-120.",
-            observed_value=[value for _, value in invalid_ages], expected_value="0-120",
-            evidence={"row_numbers": [row for row, _ in invalid_ages]},
+            description=f"{len(invalid_ages)} age value(s) fall outside the allowed range 0-120.", observed_value=[value for _, value in invalid_ages],
+            expected_value="0-120", evidence={"row_numbers": [row for row, _ in invalid_ages]},
         ))
 
     invalid_plans = [(i + 1, row.get("plan")) for i, row in enumerate(rows) if row.get("plan") not in ALLOWED_PLANS]
     if invalid_plans:
         findings.append(ReliabilityFinding(
             check=CheckType.VALIDITY, severity=Severity.ERROR, column="plan",
-            description=f"{len(invalid_plans)} plan value(s) are outside the allowed domain.",
-            observed_value=[value for _, value in invalid_plans], expected_value=sorted(ALLOWED_PLANS),
-            evidence={"row_numbers": [row for row, _ in invalid_plans]},
+            description=f"{len(invalid_plans)} plan value(s) are outside the allowed domain.", observed_value=[value for _, value in invalid_plans],
+            expected_value=sorted(ALLOWED_PLANS), evidence={"row_numbers": [row for row, _ in invalid_plans]},
         ))
+    return findings
+
+
+def check_orders_validity(rows: Iterable[Mapping[str, Any]]) -> list[ReliabilityFinding]:
+    """Find violations of the opt-in production orders domain rules."""
+    rows = list(rows)
+    findings: list[ReliabilityFinding] = []
+
+    invalid_dates = [(i + 1, row.get("order_date")) for i, row in enumerate(rows) if not _is_iso_date(row.get("order_date"))]
+    if invalid_dates:
+        findings.append(ReliabilityFinding(
+            check=CheckType.VALIDITY, severity=Severity.ERROR, column="order_date",
+            description=f"{len(invalid_dates)} order date value(s) are invalid.", observed_value=[value for _, value in invalid_dates],
+            expected_value="ISO date YYYY-MM-DD", evidence={"row_numbers": [row for row, _ in invalid_dates]},
+        ))
+
+    numeric_rules = (
+        ("quantity", lambda value: _is_number(value) and float(value) > 0, "> 0"),
+        ("unit_price", lambda value: _is_number(value) and float(value) >= 0, ">= 0"),
+        ("discount_rate", lambda value: _is_number(value) and 0 <= float(value) <= 1, "0-1"),
+        ("order_amount", lambda value: _is_number(value) and float(value) >= 0, ">= 0"),
+    )
+    for column, predicate, expected in numeric_rules:
+        invalid = [(i + 1, row.get(column)) for i, row in enumerate(rows) if not predicate(row.get(column))]
+        if invalid:
+            findings.append(ReliabilityFinding(
+                check=CheckType.VALIDITY, severity=Severity.ERROR, column=column,
+                description=f"{len(invalid)} {column} value(s) are outside the allowed domain.",
+                observed_value=[value for _, value in invalid], expected_value=expected,
+                evidence={"row_numbers": [row for row, _ in invalid]},
+            ))
+
+    categorical_rules = (
+        ("payment_method", ALLOWED_ORDER_PAYMENT_METHODS),
+        ("channel", ALLOWED_ORDER_CHANNELS),
+        ("status", ALLOWED_ORDER_STATUSES),
+    )
+    for column, allowed in categorical_rules:
+        invalid = [(i + 1, row.get(column)) for i, row in enumerate(rows) if row.get(column) not in allowed]
+        if invalid:
+            findings.append(ReliabilityFinding(
+                check=CheckType.VALIDITY, severity=Severity.ERROR, column=column,
+                description=f"{len(invalid)} {column} value(s) are outside the allowed domain.",
+                observed_value=[value for _, value in invalid], expected_value=sorted(allowed),
+                evidence={"row_numbers": [row for row, _ in invalid]},
+            ))
     return findings
 
 
@@ -100,4 +147,15 @@ def _is_number(value: Any) -> bool:
         float(value)
         return True
     except (TypeError, ValueError):
+        return False
+
+
+def _is_iso_date(value: Any) -> bool:
+    if value is None:
+        return False
+    try:
+        from datetime import date
+        date.fromisoformat(str(value))
+        return True
+    except ValueError:
         return False
