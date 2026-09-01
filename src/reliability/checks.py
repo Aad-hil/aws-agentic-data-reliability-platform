@@ -10,9 +10,9 @@ from .models import CheckType, ReliabilityFinding, Severity
 
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 ALLOWED_PLANS = {"basic", "pro", "enterprise"}
-ALLOWED_ORDER_PAYMENT_METHODS = {"card", "paypal", "bank_transfer", "cod"}
+ALLOWED_ORDER_PAYMENT_METHODS = {"card", "paypal", "bank_transfer", "cod", "upi"}
 ALLOWED_ORDER_CHANNELS = {"web", "mobile", "store", "partner"}
-ALLOWED_ORDER_STATUSES = {"pending", "paid", "shipped", "delivered", "cancelled", "refunded"}
+ALLOWED_ORDER_STATUSES = {"pending", "paid", "processing", "shipped", "delivered", "cancelled", "refunded"}
 
 
 def check_completeness(rows: Iterable[Mapping[str, Any]], required_columns: Iterable[str]) -> list[ReliabilityFinding]:
