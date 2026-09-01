@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from .checks import check_completeness, check_schema, check_uniqueness, check_validity
+from .checks import check_completeness, check_orders_validity, check_schema, check_uniqueness, check_validity
 from .models import DatasetMetadata, ReliabilityFinding, ReliabilityReport
 from .rules import QUALITY_RULES
 
@@ -30,6 +30,8 @@ def evaluate_rules(
             findings.extend(check_uniqueness(rows, rule["column"]))
         elif rule_type == "validity":
             findings.extend(check_validity(rows))
+        elif rule_type == "orders_validity":
+            findings.extend(check_orders_validity(rows))
         elif rule_type == "schema":
             findings.extend(check_schema(rows, rule["columns"]))
         else:
