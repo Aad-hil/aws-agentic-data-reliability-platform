@@ -66,7 +66,16 @@ Use ONLY the supplied incident and RCA evidence. Recommendations must remain adv
                 f"Recommendation response missing fields: {', '.join(missing)}"
             )
 
-        evidence = tuple(str(value) for value in payload["evidence"])
+        raw_evidence = payload["evidence"]
+        if isinstance(raw_evidence, str):
+            evidence = (raw_evidence,)
+        elif isinstance(raw_evidence, dict):
+            evidence = (json.dumps(raw_evidence, sort_keys=True),)
+        elif isinstance(raw_evidence, (list, tuple)):
+            evidence = tuple(str(value) for value in raw_evidence)
+        else:
+            raise ValueError("Recommendation evidence must be a string, object, or list")
+
         if not evidence:
             raise ValueError("Recommendation must contain evidence")
 
