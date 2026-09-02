@@ -1,9 +1,4 @@
-"""Transform reliability report JSON files into Tableau-ready CSV datasets.
-
-The exporter is intentionally read-only: it consumes generated S3-report JSON
-(or a local copy of it) and produces analytical extracts for Tableau/Athena.
-It does not change reliability decisions or invoke AWS services.
-"""
+"""Transform reliability report JSON files into Tableau-ready CSV datasets."""
 
 from __future__ import annotations
 
@@ -14,54 +9,9 @@ import json
 from pathlib import Path
 from typing import Any, Iterable
 
-
-DATASET_RUN_FIELDS = (
-    "run_id",
-    "request_id",
-    "dataset",
-    "source",
-    "processed_at",
-    "row_count",
-    "status",
-    "quality_score",
-    "finding_count",
-    "info_count",
-    "warning_count",
-    "error_count",
-    "critical_count",
-)
-
-FINDING_FIELDS = (
-    "run_id",
-    "dataset",
-    "finding_id",
-    "check_type",
-    "severity",
-    "column",
-    "description",
-    "observed_value",
-    "expected_value",
-    "affected_row_count",
-    "affected_rows",
-    "evidence",
-)
-
-AGENT_INSIGHT_FIELDS = (
-    "run_id",
-    "dataset",
-    "incident_id",
-    "priority",
-    "issue_severity",
-    "affected_columns",
-    "hypothesis",
-    "confidence",
-    "uncertainty",
-    "hypothesis_evidence",
-    "recommendation",
-    "recommendation_rationale",
-    "recommendation_risk",
-    "automatic_mutation_allowed",
-)
+DATASET_RUN_FIELDS = ("run_id", "request_id", "dataset", "source", "processed_at", "row_count", "status", "quality_score", "finding_count", "info_count", "warning_count", "error_count", "critical_count")
+FINDING_FIELDS = ("run_id", "dataset", "finding_id", "check_type", "severity", "column", "description", "observed_value", "expected_value", "affected_row_count", "affected_rows", "evidence")
+AGENT_INSIGHT_FIELDS = ("run_id", "dataset", "incident_id", "priority", "issue_severity", "affected_columns", "hypothesis", "confidence", "uncertainty", "hypothesis_evidence", "recommendation", "recommendation_rationale", "recommendation_risk", "recommendation_evidence", "automatic_mutation_allowed")
 
 
 def _json_value(value: Any) -> str:
@@ -83,7 +33,9 @@ def _text_evidence(value: Any) -> str:
             if all(isinstance(item, str) and len(item) <= 1 for item in values):
                 return "".join(values)
         if all(isinstance(item, str) for item in value):
-            return " ".join(value)
+            if all(len(item) <= 1 for item in value):
+                return "".join(value)
+            return " | ".join(value)
     return _json_value(value)
 
 
@@ -98,10 +50,7 @@ def _run_id(report: dict[str, Any]) -> str:
 
 def _finding_id(dataset: str, finding: dict[str, Any]) -> str:
     """Create a deterministic identifier for a finding."""
-    raw = "|".join(
-        str(finding.get(key, ""))
-        for key in ("check", "severity", "column", "description")
-    )
+    raw = "|".join(str(finding.get(key, "")) for key in ("check", "severity", "column", "description"))
     digest = hashlib.sha256(f"{dataset}|{raw}".encode("utf-8")).hexdigest()[:12]
     return f"F-{digest}"
 
@@ -141,28 +90,25 @@ def transform_report(report: dict[str, Any]) -> tuple[dict[str, Any], list[dict[
     findings: list[dict[str, Any]] = []
     for finding in reliability.get("findings", []):
         row_count, rows = _affected_rows(finding.get("evidence"))
-        findings.append(
-            {
-                "run_id": run_id,
-                "dataset": dataset,
-                "finding_id": _finding_id(dataset, finding),
-                "check_type": finding.get("check", ""),
-                "severity": finding.get("severity", ""),
-                "column": finding.get("column", ""),
-                "description": finding.get("description", ""),
-                "observed_value": _json_value(finding.get("observed_value")),
-                "expected_value": _json_value(finding.get("expected_value")),
-                "affected_row_count": row_count,
-                "affected_rows": rows,
-                "evidence": _json_value(finding.get("evidence")),
-            }
-        )
+        findings.append({
+            "run_id": run_id,
+            "dataset": dataset,
+            "finding_id": _finding_id(dataset, finding),
+            "check_type": finding.get("check", ""),
+            "severity": finding.get("severity", ""),
+            "column": finding.get("column", ""),
+            "description": finding.get("description", ""),
+            "observed_value": _json_value(finding.get("observed_value")),
+            "expected_value": _json_value(finding.get("expected_value")),
+            "affected_row_count": row_count,
+            "affected_rows": rows,
+            "evidence": _json_value(finding.get("evidence")),
+        })
 
     incident = report.get("incident") or {}
     rca = report.get("rca") or {}
     recommendation = report.get("recommendation") or {}
     hypotheses = rca.get("hypotheses") or []
-    issue_severity = incident.get("severity", "")
     affected_columns = ",".join(str(value) for value in incident.get("affected_columns", []))
     recommendation_evidence = _text_evidence(recommendation.get("evidence"))
 
@@ -170,32 +116,23 @@ def transform_report(report: dict[str, Any]) -> tuple[dict[str, Any], list[dict[
     for hypothesis in hypotheses:
         evidence = hypothesis.get("evidence", [])
         hypothesis_evidence = " | ".join(str(value) for value in evidence) if isinstance(evidence, list) else _text_evidence(evidence)
-        insights.append(
-            {
-                "run_id": run_id,
-                "dataset": dataset,
-                "incident_id": incident.get("incident_id", ""),
-                "priority": incident.get("priority", ""),
-                "issue_severity": issue_severity,
-                "affected_columns": affected_columns,
-                "hypothesis": hypothesis.get("hypothesis", ""),
-                "confidence": hypothesis.get("confidence", ""),
-                "uncertainty": hypothesis.get("uncertainty", ""),
-                "hypothesis_evidence": hypothesis_evidence,
-                "recommendation": recommendation.get("action", ""),
-                "recommendation_rationale": recommendation.get("rationale", ""),
-                "recommendation_risk": recommendation.get("risk", ""),
-                "automatic_mutation_allowed": recommendation.get("automatic_mutation_allowed", False),
-            }
-        )
-
-    if insights and recommendation_evidence:
-        # Keep the recommendation evidence available without creating another
-        # grain in the model; it is represented in the rationale/evidence text.
-        for row in insights:
-            row["recommendation_rationale"] = (
-                f"{row['recommendation_rationale']} Evidence: {recommendation_evidence}"
-            ).strip()
+        insights.append({
+            "run_id": run_id,
+            "dataset": dataset,
+            "incident_id": incident.get("incident_id", ""),
+            "priority": incident.get("priority", ""),
+            "issue_severity": incident.get("severity", ""),
+            "affected_columns": affected_columns,
+            "hypothesis": hypothesis.get("hypothesis", ""),
+            "confidence": hypothesis.get("confidence", ""),
+            "uncertainty": hypothesis.get("uncertainty", ""),
+            "hypothesis_evidence": hypothesis_evidence,
+            "recommendation": recommendation.get("action", ""),
+            "recommendation_rationale": recommendation.get("rationale", ""),
+            "recommendation_risk": recommendation.get("risk", ""),
+            "recommendation_evidence": recommendation_evidence,
+            "automatic_mutation_allowed": recommendation.get("automatic_mutation_allowed", False),
+        })
 
     return dataset_run, findings, insights
 
@@ -217,7 +154,6 @@ def export_reports(reports_dir: Path, output_dir: Path) -> dict[str, int]:
     dataset_runs: list[dict[str, Any]] = []
     findings: list[dict[str, Any]] = []
     insights: list[dict[str, Any]] = []
-
     for path in reports:
         with path.open(encoding="utf-8") as handle:
             report = json.load(handle)
@@ -229,13 +165,7 @@ def export_reports(reports_dir: Path, output_dir: Path) -> dict[str, int]:
     _write_csv(output_dir / "dataset_runs.csv", DATASET_RUN_FIELDS, dataset_runs)
     _write_csv(output_dir / "findings.csv", FINDING_FIELDS, findings)
     _write_csv(output_dir / "agent_insights.csv", AGENT_INSIGHT_FIELDS, insights)
-
-    return {
-        "reports": len(reports),
-        "dataset_runs": len(dataset_runs),
-        "findings": len(findings),
-        "agent_insights": len(insights),
-    }
+    return {"reports": len(reports), "dataset_runs": len(dataset_runs), "findings": len(findings), "agent_insights": len(insights)}
 
 
 def main() -> None:
@@ -243,9 +173,7 @@ def main() -> None:
     parser.add_argument("reports_dir", type=Path, help="Directory containing generated report JSON files")
     parser.add_argument("output_dir", type=Path, help="Directory for Tableau-ready CSV files")
     args = parser.parse_args()
-
-    counts = export_reports(args.reports_dir, args.output_dir)
-    print(json.dumps(counts, indent=2))
+    print(json.dumps(export_reports(args.reports_dir, args.output_dir), indent=2))
 
 
 if __name__ == "__main__":
