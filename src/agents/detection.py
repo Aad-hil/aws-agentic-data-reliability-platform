@@ -52,7 +52,18 @@ evidence must be copied or summarized from supplied evidence only."""
 
         priority = Priority(str(payload["priority"]).lower())
         incident_id = str(payload.get("incident_id") or self._incident_id(request.dataset_name, checks))
-        evidence = tuple(item if isinstance(item, dict) else {"value": item} for item in payload["evidence"])
+        raw_evidence = payload["evidence"]
+        if isinstance(raw_evidence, str):
+            evidence = ({"value": raw_evidence},)
+        elif isinstance(raw_evidence, dict):
+            evidence = (raw_evidence,)
+        elif isinstance(raw_evidence, (list, tuple)):
+            evidence = tuple(
+                item if isinstance(item, dict) else {"value": item}
+                for item in raw_evidence
+            )
+        else:
+            raise ValueError("Detection response evidence must be a string, object, or list")
         return Incident(
             incident_id=incident_id,
             priority=priority,

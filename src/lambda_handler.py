@@ -13,6 +13,7 @@ from src.agents.orchestrator import ReliabilityOrchestrator
 from src.reliability.evaluator import evaluate_rules
 from src.reliability.profiler import profile_rows
 from src.reliability.report import build_reliability_summary
+from src.reliability.rules import ORDERS_QUALITY_RULES, QUALITY_RULES
 
 logger = logging.getLogger(__name__)
 logger.setLevel(os.getenv("LOG_LEVEL", "INFO"))
@@ -20,9 +21,12 @@ s3 = boto3.client("s3")
 REPORT_PREFIX = os.getenv("REPORT_PREFIX", "reports/")
 BEDROCK_MODEL_ID = os.getenv("BEDROCK_MODEL_ID", "")
 METRIC_NAMESPACE = "AgenticDataReliability"
+ORDERS_DATASET_PREFIX = os.getenv("ORDERS_DATASET_PREFIX", "production_orders_")
+
 
 def _log(event: str, **fields: Any) -> None:
     logger.info(json.dumps({"event": event, "timestamp": datetime.now(timezone.utc).isoformat(), **fields}, default=str))
+
 
 def _publish_processing_metric(dataset_name: str, duration_ms: int) -> None:
     cloudwatch = boto3.client("cloudwatch", region_name=os.getenv("AWS_REGION", "us-east-1"))
@@ -38,11 +42,20 @@ def _publish_processing_metric(dataset_name: str, duration_ms: int) -> None:
         ],
     )
 
+
 def build_orchestrator() -> ReliabilityOrchestrator:
     if not BEDROCK_MODEL_ID:
         raise RuntimeError("BEDROCK_MODEL_ID must be configured")
     client = BedrockClient(model_id=BEDROCK_MODEL_ID)
     return ReliabilityOrchestrator(DetectionAgent(client), RCAAgent(client), RecommendationAgent(client))
+
+
+def _rules_for_dataset(dataset_name: str):
+    """Select an additive profile without changing existing dataset behavior."""
+    if dataset_name.startswith(ORDERS_DATASET_PREFIX):
+        return ORDERS_QUALITY_RULES
+    return QUALITY_RULES
+
 
 def _normalize_records(event: dict[str, Any]) -> list[dict[str, Any]]:
     """Normalize native S3 and S3 Object Created EventBridge events."""
@@ -59,6 +72,7 @@ def _normalize_records(event: dict[str, Any]) -> list[dict[str, Any]]:
         return [{"s3": {"bucket": {"name": bucket_name}, "object": {"key": object_key}}}]
 
     return []
+
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     request_id = getattr(context, "aws_request_id", str(uuid.uuid4()))
@@ -81,7 +95,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             dataset_name = key.rsplit("/", 1)[-1].rsplit(".", 1)[0]
             source = f"s3://{bucket}/{key}"
             profile = profile_rows(rows, dataset_name=dataset_name, source=source)
-            report = evaluate_rules(rows, dataset_name=dataset_name, source=source)
+            report = evaluate_rules(rows, dataset_name=dataset_name, source=source, rules=_rules_for_dataset(dataset_name))
             summary = build_reliability_summary(report)
             workflow = orchestrator.run(reliability_report=summary, dataset_name=dataset_name,
                                         profile=profile, dataset_metadata=summary["dataset"])

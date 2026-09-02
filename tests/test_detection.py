@@ -32,6 +32,21 @@ def test_detection_agent_returns_structured_incident() -> None:
     assert incident.incident_id.startswith("INC-")
 
 
+def test_detection_normalizes_string_evidence_without_splitting_characters() -> None:
+    report = {"findings": [{"check": "uniqueness"}]}
+    agent = DetectionAgent(FakeClient({
+        "priority": "critical",
+        "failed_checks": ["uniqueness"],
+        "severity": "critical",
+        "affected_columns": ["customer_id"],
+        "evidence": "5 duplicate key values detected.",
+    }))
+
+    incident = agent.run(DetectionInput(report, "customers"))
+
+    assert incident.evidence == ({"value": "5 duplicate key values detected."},)
+
+
 def test_detection_rejects_unknown_check() -> None:
     report = {"findings": [{"check": "validity"}]}
     agent = DetectionAgent(FakeClient({
