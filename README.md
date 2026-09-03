@@ -34,9 +34,15 @@ S3 reports/*.json
       |
       +--> CloudWatch Logs + Metrics
       +--> SQS failure destination
+      |
+      v
+Tableau presentation layer
+      ^
+      |
+Amazon Athena / reliability_ui
 ```
 
-The deterministic engine establishes the evidence. Specialized agents interpret that evidence. Recommendations remain advisory and automatic destructive mutation is disabled.
+The deterministic engine establishes the evidence. Specialized agents interpret that evidence. Recommendations remain advisory and automatic destructive mutation is disabled. Tableau is a read-only analytical/presentation layer; it does not perform reliability detection or remediation decisions.
 
 ## Current status
 
@@ -51,6 +57,7 @@ The deterministic engine establishes the evidence. Specialized agents interpret 
 - Phase 6.3 — Security and IAM review: complete
 - Phase 6.4 — Failure/retry and operational resilience review: complete
 - Phase 6.5 — Final portfolio walkthrough and architecture evidence: complete
+- Tableau UI — Athena analytical layer + portfolio dashboards: implemented on `feature/tableau-reliability-ui`
 
 ### Live AWS validation checkpoint
 
@@ -98,12 +105,13 @@ The remaining production hardening item is durable idempotency for multi-record/
 .github/                 CI, templates, CODEOWNERS, Dependabot
 data/sample/             deterministic sample dataset
 data/evaluation/         representative reliability evaluation cases
-docs/                    architecture, evaluation, execution, E2E, performance, security, resilience and project plan
+docs/                    architecture, evaluation, execution, E2E, performance, security, resilience, UI and project plan
 infra/                   AWS SAM infrastructure
+scripts/                 data/portfolio utilities, including Tableau extract generation
 src/agents/              Bedrock adapter and specialized agents
 src/reliability/         deterministic reliability engine
 src/lambda_handler.py    S3-triggered Lambda entry point
-tests/                   unit, contract and evaluation tests
+tests/                   unit, contract, evaluation and Tableau export tests
 ```
 
 ## Local development
@@ -132,6 +140,19 @@ sam deploy
 
 The stack provisions the S3/EventBridge/Lambda execution boundary, Bedrock integration, CloudWatch observability, dashboard, and Lambda failure destination.
 
+## Tableau / BI layer
+
+The Tableau layer consumes a normalized analytical contract through Amazon Athena. It is intentionally minimal: the goal is to demonstrate an AWS-to-BI product surface without moving reliability logic into the dashboard.
+
+Current Tableau views:
+
+- **Data Reliability Overview** — run context, quality score, finding count, severity breakdown, findings, and RCA/recommendations.
+- **Incident Investigation** — detailed findings and RCA/recommendations.
+
+The Overview findings table uses deterministic `finding_id` selection to filter Incident Investigation. The analytical model uses `run_id` relationships rather than directly joining findings to agent hypotheses, avoiding row multiplication.
+
+See [Tableau Reliability UI](docs/tableau.md) and [Tableau UI Architecture](docs/ui-architecture.md) for the data contract, Athena model, connection setup, dashboard behavior, security rules, and known limitations.
+
 ## Documentation
 
 - [Architecture](docs/architecture.md)
@@ -141,6 +162,8 @@ The stack provisions the S3/EventBridge/Lambda execution boundary, Bedrock integ
 - [Performance and cost evidence](docs/performance.md)
 - [Security and IAM review](docs/security-iam-review.md)
 - [Failure, retry, and resilience review](docs/resilience-review.md)
+- [Tableau Reliability UI](docs/tableau.md)
+- [Tableau UI Architecture](docs/ui-architecture.md)
 - [Project plan](docs/project-plan.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security](SECURITY.md)
@@ -155,6 +178,7 @@ The stack provisions the S3/EventBridge/Lambda execution boundary, Bedrock integ
 - AWS-independent tests
 - Measured before optimized
 - Small, explainable architecture
+- BI/presentation logic separated from reliability decisions
 
 ## License
 

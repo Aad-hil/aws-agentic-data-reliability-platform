@@ -1,0 +1,122 @@
+{
+  "dataset": "production_orders_demo",
+  "reliability_report": {
+    "dataset": {
+      "name": "production_orders_demo",
+      "source": "s3://demo-bucket/input/production_orders_demo.csv",
+      "row_count": 1005,
+      "columns": ["order_id", "country", "order_date"]
+    },
+    "status": "failed",
+    "score": 0,
+    "finding_count": 7,
+    "severity_counts": {
+      "info": 0,
+      "warning": 0,
+      "error": 6,
+      "critical": 1
+    },
+    "findings": [
+      {
+        "check": "completeness",
+        "severity": "error",
+        "column": "country",
+        "description": "2 required value(s) are missing.",
+        "observed_value": 2,
+        "expected_value": 0,
+        "evidence": {"row_numbers": [81, 89]}
+      },
+      {
+        "check": "uniqueness",
+        "severity": "critical",
+        "column": "order_id",
+        "description": "2 duplicate key value(s) detected.",
+        "observed_value": {"O0000011": 2, "O0000056": 2},
+        "expected_value": "Each key value occurs once",
+        "evidence": {"duplicate_values": {"O0000011": 2, "O0000056": 2}}
+      },
+      {
+        "check": "validity",
+        "severity": "error",
+        "column": "order_date",
+        "description": "1 order date value is invalid.",
+        "observed_value": ["not-a-date"],
+        "expected_value": "ISO date YYYY-MM-DD",
+        "evidence": {"row_numbers": [13]}
+      },
+      {
+        "check": "validity",
+        "severity": "error",
+        "column": "quantity",
+        "description": "1 quantity value is outside the allowed domain.",
+        "observed_value": ["0"],
+        "expected_value": "> 0",
+        "evidence": {"row_numbers": [57]}
+      },
+      {
+        "check": "validity",
+        "severity": "error",
+        "column": "discount_rate",
+        "description": "1 discount rate value is outside the allowed domain.",
+        "observed_value": ["1.5"],
+        "expected_value": "0-1",
+        "evidence": {"row_numbers": [74]}
+      },
+      {
+        "check": "validity",
+        "severity": "error",
+        "column": "order_amount",
+        "description": "1 order amount value is outside the allowed domain.",
+        "observed_value": ["-50.0"],
+        "expected_value": ">= 0",
+        "evidence": {"row_numbers": [30]}
+      },
+      {
+        "check": "validity",
+        "severity": "error",
+        "column": "payment_method",
+        "description": "1 payment method value is outside the allowed domain.",
+        "observed_value": ["crypto"],
+        "expected_value": ["card", "upi"],
+        "evidence": {"row_numbers": [23]}
+      }
+    ]
+  },
+  "incident": {
+    "incident_id": "uniqueness_order_id_critical",
+    "priority": "critical",
+    "failed_checks": ["uniqueness"],
+    "severity": "critical",
+    "affected_columns": ["order_id"],
+    "evidence": [{"value": "D"}, {"value": "u"}, {"value": "p"}, {"value": "l"}, {"value": "i"}, {"value": "c"}, {"value": "a"}, {"value": "t"}, {"value": "e"}, {"value": "s"}]
+  },
+  "rca": {
+    "incident_id": "uniqueness_order_id_critical",
+    "hypotheses": [
+      {
+        "hypothesis": "Duplicate order IDs",
+        "evidence": ["1000 unique order IDs across 1005 rows."],
+        "confidence": 0.95,
+        "uncertainty": "Exact source of duplication is not confirmed."
+      },
+      {
+        "hypothesis": "Append or ingestion duplication",
+        "evidence": ["Five additional rows suggest appended duplicates."],
+        "confidence": 0.85,
+        "uncertainty": "Source construction needs verification."
+      }
+    ]
+  },
+  "recommendation": {
+    "incident_id": "uniqueness_order_id_critical",
+    "action": "Audit the order_id generation and ingestion process.",
+    "rationale": "The order_id column contains duplicates.",
+    "risk": "Downstream order processing may be affected.",
+    "evidence": [
+      "T", "h", "e", " ", "o", "r", "d", "e", "r", "_", "i", "d", " ", "c", "o", "l", "u", "m", "n", " ", "c", "o", "n", "t", "a", "i", "n", "s", " ", "d", "u", "p", "l", "i", "c", "a", "t", "e", "s", "."
+    ],
+    "automatic_mutation_allowed": false
+  },
+  "processed_at": "2026-09-01T19:24:07.492381+00:00",
+  "request_id": "run-001"
+}
