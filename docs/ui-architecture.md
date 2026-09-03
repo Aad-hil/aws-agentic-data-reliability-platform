@@ -26,7 +26,7 @@ AWS Lambda
 Reliability reports in Amazon S3
     |
     v
-BI-friendly analytical data
+Tableau-oriented analytical extracts
     |
     v
 Amazon Athena
@@ -39,7 +39,7 @@ Tableau Reliability Dashboard
 
 | Layer | Responsibility |
 |---|---|
-| Amazon S3 | Store input datasets and reliability reports |
+| Amazon S3 | Store input datasets, reliability reports, and Tableau-oriented extracts |
 | EventBridge | Trigger processing when input objects are created |
 | AWS Lambda | Execute the reliability workflow |
 | Reliability engine | Perform deterministic data-quality checks |
@@ -51,27 +51,29 @@ Tableau Reliability Dashboard
 
 ## Tableau analytical model
 
-The first UI implementation will expose three logical datasets:
+The current UI exposes three logical datasets/views:
 
-### `dataset_runs`
+### `v_dataset_runs`
 
 One record per reliability processing run.
 
 Core fields:
 
 - `run_id`
+- `request_id`
 - `dataset`
+- `source`
 - `processed_at`
 - `row_count`
 - `status`
 - `quality_score`
 - `finding_count`
-- `critical_count`
-- `error_count`
+- `info_count`
 - `warning_count`
-- `duration_ms`
+- `error_count`
+- `critical_count`
 
-### `findings`
+### `v_findings`
 
 One record per detected reliability finding.
 
@@ -80,42 +82,72 @@ Core fields:
 - `run_id`
 - `dataset`
 - `finding_id`
-- `rule_id`
+- `check_type`
 - `severity`
-- `message`
+- `column_name`
+- `description`
+- `observed_value`
+- `expected_value`
+- `affected_row_count`
 - `affected_rows`
 - `evidence`
 
-### `agent_insights`
+### `v_agent_insights`
 
-One record per RCA/recommendation insight.
+One record per RCA hypothesis/agent insight.
 
 Core fields:
 
 - `run_id`
 - `dataset`
-- `issue_type`
+- `incident_id`
+- `priority`
+- `issue_severity`
+- `affected_columns`
 - `hypothesis`
 - `confidence`
+- `uncertainty`
+- `hypothesis_evidence`
 - `recommendation`
+- `recommendation_rationale`
+- `recommendation_risk`
+- `recommendation_evidence`
+- `automatic_mutation_allowed`
+
+Processing duration is intentionally not duplicated into the Tableau contract because the current reliability report does not provide it as a report field. `ProcessingDurationMs` remains a CloudWatch operational metric.
+
+## Tableau relationships
+
+The three logical datasets are related by `run_id`:
+
+```text
+v_dataset_runs.Run Id
+       |
+       +---- v_findings.Run Id
+       |
+       +---- v_agent_insights.Run Id
+```
+
+Findings and agent insights are not joined directly. This preserves their one-to-many relationships to a run and avoids multiplying findings by RCA hypotheses.
 
 ## Dashboard views
 
-The portfolio dashboard will be developed incrementally:
+The implemented portfolio UI contains:
 
-1. **Overview** — quality score, processed datasets, failed runs, critical findings, trends, and recent runs.
-2. **Dataset Health** — selected dataset/run details and rule-level findings.
-3. **Findings** — severity, rule, affected rows, and evidence.
-4. **RCA & Recommendations** — agent-generated hypotheses, confidence, and recommendations.
+1. **Data Reliability Overview** — dataset/run context, quality score, finding count, severity breakdown, findings detail, and RCA/recommendations.
+2. **Incident Investigation** — detailed findings, evidence-oriented fields, affected-row information, and RCA/recommendations.
+
+The Overview findings table has a Tableau filter action keyed by deterministic `finding_id`, allowing a selected finding to filter the Incident Investigation view.
 
 ## Design principles
 
 - Keep the existing reliability engine unchanged.
 - Keep Tableau read-only with respect to reliability results.
 - Keep deterministic detection separate from agentic RCA/recommendation.
-- Use synthetic/demo data only for the portfolio dashboard.
+- Use synthetic/demo data only for portfolio evidence.
 - Do not expose credentials, secrets, account identifiers, or PII in dashboard screenshots.
 - Keep CloudWatch as the operational observability layer; Tableau is the analytical/presentation layer.
+- Avoid unnecessary custom UI infrastructure when Tableau sufficiently demonstrates the presentation layer.
 
 ## Implementation sequence
 
@@ -130,9 +162,9 @@ UI-3  Connect Tableau to Athena
   |
 UI-4  Build Overview dashboard
   |
-UI-5  Build Dataset Health and Findings
+UI-5  Build Incident Investigation / Findings
   |
-UI-6  Build RCA & Recommendations
+UI-6  Integrate RCA & Recommendations
   |
 UI-7  Polish, validate, document, and capture portfolio evidence
 ```
