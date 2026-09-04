@@ -50,10 +50,6 @@ Amazon Athena / reliability_ui
 
 The following visuals are repository artifacts from the implemented system. The Tableau screenshots were captured from the working Tableau Desktop workbook connected to the Athena `reliability_ui` analytical layer.
 
-### System architecture
-
-![Architecture overview](docs/assets/architecture-overview.svg)
-
 ### Tableau — Reliability Overview
 
 ![Tableau Reliability Overview dashboard](docs/assets/tableau-reliability-overview.png)
