@@ -44,20 +44,26 @@ Amazon Athena / reliability_ui
 
 The deterministic engine establishes the evidence. Specialized agents interpret that evidence. Recommendations remain advisory and automatic destructive mutation is disabled. Tableau is a read-only analytical/presentation layer; it does not perform reliability detection or remediation decisions.
 
-## Current status
+## Project status
 
-- Phase 0 — Repository foundation: complete
-- Phase 1 — Data foundation: complete
-- Phase 2 — Deterministic reliability engine: complete
-- Phase 3 — Multi-agent reasoning + local E2E: complete
-- Phase 4 — AWS runtime and E2E validation: complete
-- Phase 5 — Agent evaluation and observability hardening: complete
-- Phase 6.1 — Cost and latency evidence baseline: complete
-- Phase 6.2 — Repeated performance benchmark: complete
-- Phase 6.3 — Security and IAM review: complete
-- Phase 6.4 — Failure/retry and operational resilience review: complete
-- Phase 6.5 — Final portfolio walkthrough and architecture evidence: complete
-- Tableau UI — Athena analytical layer + portfolio dashboards: implemented on `feature/tableau-reliability-ui`
+**Portfolio-ready / core implementation complete.**
+
+| Area | Status |
+|---|---|
+| AWS event-driven reliability pipeline | Complete |
+| Deterministic reliability engine | Complete |
+| Multi-agent detection, RCA and recommendation workflow | Complete |
+| Bedrock integration | Complete |
+| CloudWatch observability | Complete |
+| SQS failure destination and bounded retries | Complete |
+| Agent evaluation and regression coverage | Complete |
+| Security/IAM review | Complete |
+| Performance/cost evidence baseline | Complete |
+| Athena analytical layer | Complete |
+| Tableau reliability dashboards | Complete |
+| Portfolio documentation | Complete |
+
+The Tableau/Athena feature was merged into `main` through PR #46 after CI validation.
 
 ### Live AWS validation checkpoint
 
@@ -97,7 +103,20 @@ The Bedrock resource is currently `*` as a documented portability trade-off for 
 - Exhausted failures are routed to an SQS failure destination for investigation/reprocessing.
 - Invalid non-input objects are skipped without entering a retry loop.
 
-The remaining production hardening item is durable idempotency for multi-record/replayed events.
+The remaining production hardening item is durable idempotency for multi-record/replayed events; this is intentionally documented rather than hidden because the project is a portfolio-scale implementation, not a claim of production readiness.
+
+## Tableau / BI layer
+
+The Tableau layer consumes a normalized analytical contract through Amazon Athena. It is intentionally minimal: the goal is to demonstrate an AWS-to-BI product surface without moving reliability logic into the dashboard.
+
+Current Tableau views:
+
+- **Reliability Overview** — dataset context, run status, quality score, finding count, severity breakdown, findings, and RCA/recommendations.
+- **Incident Investigation** — detailed findings and RCA/recommendations.
+
+The Overview findings table uses deterministic `finding_id` selection to filter Incident Investigation. The analytical model uses `run_id` relationships rather than directly joining findings to agent hypotheses, avoiding row multiplication.
+
+See [Tableau Reliability UI](docs/tableau.md) and [Tableau UI Architecture](docs/ui-architecture.md) for the data contract, Athena model, connection setup, dashboard behavior, security rules, and known limitations.
 
 ## Repository layout
 
@@ -105,7 +124,7 @@ The remaining production hardening item is durable idempotency for multi-record/
 .github/                 CI, templates, CODEOWNERS, Dependabot
 data/sample/             deterministic sample dataset
 data/evaluation/         representative reliability evaluation cases
-docs/                    architecture, evaluation, execution, E2E, performance, security, resilience, UI and project plan
+docs/                    architecture, evaluation, execution, E2E, performance, security, resilience, UI and portfolio docs
 infra/                   AWS SAM infrastructure
 scripts/                 data/portfolio utilities, including Tableau extract generation
 src/agents/              Bedrock adapter and specialized agents
@@ -140,19 +159,6 @@ sam deploy
 
 The stack provisions the S3/EventBridge/Lambda execution boundary, Bedrock integration, CloudWatch observability, dashboard, and Lambda failure destination.
 
-## Tableau / BI layer
-
-The Tableau layer consumes a normalized analytical contract through Amazon Athena. It is intentionally minimal: the goal is to demonstrate an AWS-to-BI product surface without moving reliability logic into the dashboard.
-
-Current Tableau views:
-
-- **Data Reliability Overview** — run context, quality score, finding count, severity breakdown, findings, and RCA/recommendations.
-- **Incident Investigation** — detailed findings and RCA/recommendations.
-
-The Overview findings table uses deterministic `finding_id` selection to filter Incident Investigation. The analytical model uses `run_id` relationships rather than directly joining findings to agent hypotheses, avoiding row multiplication.
-
-See [Tableau Reliability UI](docs/tableau.md) and [Tableau UI Architecture](docs/ui-architecture.md) for the data contract, Athena model, connection setup, dashboard behavior, security rules, and known limitations.
-
 ## Documentation
 
 - [Architecture](docs/architecture.md)
@@ -164,6 +170,7 @@ See [Tableau Reliability UI](docs/tableau.md) and [Tableau UI Architecture](docs
 - [Failure, retry, and resilience review](docs/resilience-review.md)
 - [Tableau Reliability UI](docs/tableau.md)
 - [Tableau UI Architecture](docs/ui-architecture.md)
+- [Portfolio / resume guide](docs/portfolio.md)
 - [Project plan](docs/project-plan.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security](SECURITY.md)
