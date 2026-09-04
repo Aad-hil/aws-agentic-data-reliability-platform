@@ -6,6 +6,10 @@
 
 ## Architecture
 
+![AWS Agentic Data Reliability Platform architecture](docs/assets/architecture-overview.svg)
+
+The architecture visual is a portfolio-oriented view of the implemented flow. The deterministic engine establishes the evidence. Specialized agents interpret that evidence. Recommendations remain advisory and automatic destructive mutation is disabled. Tableau is a read-only analytical/presentation layer; it does not perform reliability detection or remediation decisions.
+
 ```text
 S3 input/*.csv
       | ObjectCreated
@@ -41,8 +45,6 @@ Tableau presentation layer
       |
 Amazon Athena / reliability_ui
 ```
-
-The deterministic engine establishes the evidence. Specialized agents interpret that evidence. Recommendations remain advisory and automatic destructive mutation is disabled. Tableau is a read-only analytical/presentation layer; it does not perform reliability detection or remediation decisions.
 
 ## Project status
 
