@@ -13,6 +13,31 @@ An AWS-native multi-agent data reliability platform that detects data quality is
 - Added an Athena analytical layer and read-only Tableau dashboards for dataset health, findings, incidents, RCA hypotheses, and recommendations without moving reliability decisions into the BI layer.
 - Validated the deployed workflow with representative faulty datasets, regression tests, resilience controls, security/IAM review, and repeated performance measurements.
 
+## Production-readiness boundary
+
+This project is a portfolio-scale reference implementation, not a production SLA or enterprise-scale reliability service.
+
+### Supported / demonstrated
+
+- CSV inputs delivered through the S3 `input/` prefix.
+- Event-driven processing through S3 → EventBridge → Lambda.
+- Deterministic reliability checks for the implemented dataset profiles.
+- Bounded Bedrock retries and one recommendation-output repair attempt.
+- Lambda asynchronous retries capped at 2 retries within 1 hour, with exhausted failures routed to SQS.
+- Evidence-backed RCA and recommendation generation with automatic mutation disabled.
+- Read-only Athena/Tableau analytical consumption.
+
+### Not guaranteed / out of scope
+
+- Durable idempotency for replayed or multi-record events.
+- Enterprise-scale throughput, concurrency, or load-test guarantees.
+- A production latency SLO/SLA; the documented timings are benchmark observations only.
+- Automatic destructive remediation or source-data mutation.
+- Arbitrary non-CSV workloads or dataset schemas beyond the implemented reliability profiles.
+- A fabricated or fixed AWS cost guarantee; actual cost depends on workload, storage, Lambda execution, Athena queries, CloudWatch usage, and Bedrock inference consumption.
+
+These boundaries are intentional and should be stated during portfolio or interview discussions rather than implying capabilities that were not validated.
+
 ## Interview talking points
 
 ### Why deterministic checks plus agents?
