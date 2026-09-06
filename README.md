@@ -94,6 +94,29 @@ Three benchmark executions produced persisted reports and these duration observa
 
 This is a portfolio performance baseline, not a production SLA or load-test result.
 
+## Production-readiness boundary
+
+This is a portfolio-scale reference implementation, not a production SLA or enterprise-scale reliability service.
+
+**Supported / demonstrated**
+
+- CSV inputs delivered through the S3 `input/` prefix.
+- Event-driven processing through S3 → EventBridge → Lambda.
+- Deterministic reliability checks for the implemented dataset profiles.
+- Bounded Bedrock retries and one recommendation-output repair attempt.
+- Lambda asynchronous retries capped at 2 retries within 1 hour, with exhausted failures routed to SQS.
+- Evidence-backed RCA and recommendation generation with automatic mutation disabled.
+- Read-only Athena/Tableau analytical consumption.
+
+**Not guaranteed / out of scope**
+
+- Durable idempotency for replayed or multi-record events.
+- Enterprise-scale throughput, concurrency, or load-test guarantees.
+- A production latency SLO/SLA; documented timings are benchmark observations only.
+- Automatic destructive remediation or source-data mutation.
+- Arbitrary non-CSV workloads or dataset schemas beyond the implemented reliability profiles.
+- A fixed AWS cost guarantee; actual cost depends on workload, storage, Lambda execution, Athena queries, CloudWatch usage, SQS, and Bedrock inference consumption.
+
 ## Security posture
 
 - S3 AES-256 server-side encryption with Bucket Key
@@ -117,7 +140,7 @@ The Bedrock resource is currently `*` as a documented portability trade-off for 
 - Exhausted failures are routed to an SQS failure destination for investigation/reprocessing.
 - Invalid non-input objects are skipped without entering a retry loop.
 
-The remaining production hardening item is durable idempotency for multi-record/replayed events; this is intentionally documented rather than hidden because the project is a portfolio-scale implementation, not a claim of production readiness.
+The remaining production hardening item is durable idempotency for multi-record/replayed events; this is intentionally documented rather than hidden.
 
 ## Tableau / BI layer
 
@@ -182,6 +205,8 @@ The stack provisions the S3/EventBridge/Lambda execution boundary, Bedrock integ
 - [Performance and cost evidence](docs/performance.md)
 - [Security and IAM review](docs/security-iam-review.md)
 - [Failure, retry, and resilience review](docs/resilience-review.md)
+- [Deployment runbook](docs/deployment-runbook.md)
+- [Operator runbook](docs/operator-runbook.md)
 - [Tableau Reliability UI](docs/tableau.md)
 - [Tableau UI Architecture](docs/ui-architecture.md)
 - [Portfolio / resume guide](docs/portfolio.md)
